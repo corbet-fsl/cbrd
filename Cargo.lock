@@ -285,7 +285,7 @@ checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 [[package]]
 name = "cfrm"
 version = "0.2.0"
-source = "git+https://github.com/corbet-libs/cfrm?branch=main#f197f7de6b4a503cb239e4f9ad4de3cbe3c4b8c8"
+source = "git+https://github.com/corbet-libs/cfrm?branch=main#14136269af06a07ecf61ace4d5a694fab750c051"
 dependencies = [
  "schemars",
  "serde",
@@ -412,7 +412,7 @@ dependencies = [
 [[package]]
 name = "clnk"
 version = "0.1.0"
-source = "git+https://github.com/corbet-foss/clnk?branch=main#608d17660510ba0bf08a4f5ab78475e8a962bb16"
+source = "git+https://github.com/corbet-foss/clnk?branch=main#51fbede5d93a49f2b0515ef057d127949b1c5c06"
 dependencies = [
  "cfrm",
  "schemars",
@@ -562,7 +562,7 @@ dependencies = [
 [[package]]
 name = "cshm"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cshm?branch=main#3218fafea65b38c08edbce635500c561fd10c981"
+source = "git+https://github.com/corbet-foss/cshm?branch=main#2fddfc89a3e3503df1430cd22eaf090ca52bc694"
 dependencies = [
  "bigdecimal",
  "jsonschema",

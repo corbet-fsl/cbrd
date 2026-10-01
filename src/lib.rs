@@ -35,13 +35,13 @@ pub struct Status {
 
 /// A Board has a fixed local community and exactly one Link. It owns no copy of
 /// Contacts, the profile draft, the wallet or the server search index.
-pub struct Board<T> {
+pub struct Board<T, R = ()> {
     community: String,
-    link: clnk::Link<T>,
+    link: clnk::Link<T, R>,
 }
-impl<T: clnk::Transport> Board<T> {
+impl<T: clnk::Transport, R> Board<T, R> {
     /// Bind one runtime's existing Link; this neither authenticates nor connects.
-    pub fn new(community: String, link: clnk::Link<T>) -> Result<Self, Error> {
+    pub fn new(community: String, link: clnk::Link<T, R>) -> Result<Self, Error> {
         if community.is_empty() || community.len() > 256 {
             return Err(Error::Scope);
         }

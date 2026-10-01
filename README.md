@@ -28,3 +28,7 @@ GroupView, consent/fork/suggestion and rooms. Tests must demonstrate committed e
 ordering, community isolation, no profile keys at Forum, both session classes
 through Link, group policy/consent and listing handover. Current local composition
 and unavailable adapters are listed in [the contract](docs/CONTRACT.md).
+
+Board accepts the Link owner’s typed anonymous-client attachment while retaining
+exactly one Link. Its room status remains unavailable until the actual Attend
+authority and shared transaction adapter are connected.

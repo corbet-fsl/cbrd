@@ -16,8 +16,11 @@ candidate/checkpoint, Groups lifecycle and Attend/Threads ordered room adapters.
 No external notice or key release occurs from local inspection; no fixture
 policy or ready status fills an absent capability. Profile/Contacts/Wallet keep
 their own custody, journals and authority. Link remains the sole Forum connection owner, with separate unlinkable
-authenticated presence/forum and anonymous blind-pass room sessions. The latter
-awaits the generated Forum owner port; it cannot reuse the authenticated session.
+authenticated presence/forum and anonymous blind-pass room sessions. Board can retain `Link<Auth, AnonymousRooms<Rooms>>` from the actual Link owner
+without exposing either client. Link routes the generated anonymous request DTOs;
+Board still exposes no room operation until the current Attend authority and
+combined checkpoint adapter exist. Configuring the second client does not make
+`Status.rooms` available or prove real HTTPS session unlinkability.
 
 Tests exercise real signed Profile preparation/checkpoints, Guard reciprocity
 and Envelope opening across both facade paths on native and actual Wasm.

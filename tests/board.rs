@@ -188,7 +188,11 @@ impl clnk::Transport for Offline {
     }
 }
 shared!(one_link_and_owner_scopes_are_preserved, {
-    let mut board = Board::new("garden".into(), clnk::Link::new(Offline)).unwrap();
+    let mut board = Board::new(
+        "garden".into(),
+        clnk::Link::new(Offline).with_anonymous_rooms(Offline),
+    )
+    .unwrap();
     assert_eq!(board.community(), "garden");
     assert_eq!(board.status().connection, clnk::State::Disconnected);
     assert_eq!(board.status().groups, cbrd::Availability::Unavailable);
