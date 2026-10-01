@@ -1,0 +1,35 @@
+[package]
+name = "cbrd"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Board for device-side community composition"
+repository = "https://github.com/corbet-libs/cbrd"
+license-file = "LICENSE.md"
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+clnk = { git = "https://github.com/corbet-foss/clnk", branch = "main" }
+csrh = { git = "https://github.com/corbet-foss/csrh", branch = "main" }
+cxch = { git = "https://github.com/corbet-foss/cxch", branch = "main" }
+cgrp = { git = "https://github.com/corbet-foss/cgrp", branch = "main" }
+ctnd = { git = "https://github.com/corbet-foss/ctnd", branch = "main" }
+cnvl = { git = "https://github.com/corbet-foss/cnvl", branch = "main" }
+cshm = { git = "https://github.com/corbet-foss/cshm", branch = "main" }
+serde = { version = "1", features = ["derive"] }
+schemars = "1"
+
+[dev-dependencies]
+cpfl = { git = "https://github.com/corbet-foss/cpfl", branch = "main" }
+cgrd = { git = "https://github.com/corbet-foss/cgrd", branch = "main", default-features = false }
+ckmg = { git = "https://github.com/corbet-foss/ckmg", branch = "main" }
+cwst = { git = "https://github.com/corbet-foss/cwst", branch = "main" }
+csgn = { git = "https://github.com/corbet-foss/csgn", branch = "main", default-features = false, features = ["volatile-signer"] }
+ed25519-dalek = { version = "3", default-features = false, features = ["fast"] }
+serde_json = "1"
+futures-executor = "0.3"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
