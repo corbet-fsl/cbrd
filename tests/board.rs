@@ -295,6 +295,102 @@ shared!(one_link_and_owner_scopes_are_preserved, {
     );
 });
 
+shared!(
+    changed_signed_rules_and_expiry_are_rechecked_without_cached_results,
+    {
+        let board = Board::new("garden".into(), clnk::Link::new(Offline)).unwrap();
+        let alice = Fixture::new("alice", 34, vec![]).await;
+        let bob = Fixture::new("bob", 50, vec![]).await;
+        let alice_blocking = Fixture::new(
+            "alice",
+            34,
+            vec![cgrd::Rule::Block {
+                member: "bob".into(),
+            }],
+        )
+        .await;
+        let bob_blocking = Fixture::new(
+            "bob",
+            50,
+            vec![cgrd::Rule::Block {
+                member: "alice".into(),
+            }],
+        )
+        .await;
+        let policy = alice.policy();
+        let verification = Verification {
+            policy: &policy,
+            signed_schema: &alice.schema,
+        };
+        assert!(
+            board
+                .recheck(
+                    alice.input("alice"),
+                    bob.input("bob"),
+                    &verification,
+                    &clean
+                )
+                .unwrap()
+                .decision()
+                .is_match()
+        );
+        for (requester, owner) in [(&alice_blocking, &bob), (&alice, &bob_blocking)] {
+            assert!(
+                !board
+                    .recheck(
+                        requester.input("alice"),
+                        owner.input("bob"),
+                        &verification,
+                        &clean
+                    )
+                    .unwrap()
+                    .decision()
+                    .is_match()
+            );
+            assert!(
+                board
+                    .recheck(
+                        alice.input("alice"),
+                        bob.input("bob"),
+                        &verification,
+                        &clean
+                    )
+                    .unwrap()
+                    .decision()
+                    .is_match()
+            );
+            assert_eq!(board.status().connection, clnk::State::Disconnected);
+            assert_eq!(board.status().groups, cbrd::Availability::Unavailable);
+            assert_eq!(board.status().rooms, cbrd::Availability::Unavailable);
+        }
+        let mut expired_policy = alice.policy();
+        expired_policy.policy.now = 2000;
+        let expired = Verification {
+            policy: &expired_policy,
+            signed_schema: &alice.schema,
+        };
+        assert!(matches!(
+            board.recheck(alice.input("alice"), bob.input("bob"), &expired, &clean),
+            Err(Error::Rejected)
+        ));
+        assert!(
+            board
+                .recheck(
+                    alice.input("alice"),
+                    bob.input("bob"),
+                    &verification,
+                    &clean
+                )
+                .unwrap()
+                .decision()
+                .is_match()
+        );
+        assert_eq!(board.status().connection, clnk::State::Disconnected);
+        assert_eq!(board.status().groups, cbrd::Availability::Unavailable);
+        assert_eq!(board.status().rooms, cbrd::Availability::Unavailable);
+    }
+);
+
 // Link maintained profiling support only into the instrumented test binary.
 #[cfg(all(target_arch = "wasm32", owned_browser_coverage))]
 #[wasm_bindgen_test::wasm_bindgen_test]
