@@ -204,6 +204,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "browser-coverage-runtime"
+version = "0.0.0"
+dependencies = [
+ "minicov 0.3.9",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -231,6 +239,7 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 name = "cbrd"
 version = "0.1.0"
 dependencies = [
+ "browser-coverage-runtime",
  "cgrd",
  "cgrp",
  "ckmg",
@@ -288,7 +297,7 @@ dependencies = [
 [[package]]
 name = "cgrd"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cgrd?branch=main#a13f41e37515374bda5b9ee6a8e6bb35fcc2a91e"
+source = "git+https://github.com/corbet-foss/cgrd?branch=main#d1cacbdb863534183d27de468359f657aa7174fa"
 dependencies = [
  "bigdecimal",
  "cpns",
@@ -296,6 +305,7 @@ dependencies = [
  "csgn",
  "cshm",
  "ed25519-dalek",
+ "geographiclib-rs",
  "precis-profiles",
  "rustrict",
  "serde",
@@ -402,7 +412,7 @@ dependencies = [
 [[package]]
 name = "clnk"
 version = "0.1.0"
-source = "git+https://github.com/corbet-foss/clnk?branch=main#212d9f2347ed0deab952f6cb55dde7bfe3d6b433"
+source = "git+https://github.com/corbet-foss/clnk?branch=main#608d17660510ba0bf08a4f5ab78475e8a962bb16"
 dependencies = [
  "cfrm",
  "schemars",
@@ -418,7 +428,7 @@ checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
 [[package]]
 name = "cnvl"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cnvl?branch=main#14dcabd259c8b16d6e719b2ee8d7e524d7dc2997"
+source = "git+https://github.com/corbet-foss/cnvl?branch=main#eabf269b5d1d85a194911dbd19f6cf49d34892ea"
 dependencies = [
  "chacha20poly1305",
  "ckmg",
@@ -452,7 +462,7 @@ dependencies = [
 [[package]]
 name = "cpfl"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cpfl?branch=main#8635759841ab505536c65273d03c11d1b1b9d8fa"
+source = "git+https://github.com/corbet-foss/cpfl?branch=main#038750818f149b5c1736f74baa36633f26cf75b0"
 dependencies = [
  "blake3",
  "cgrd",
@@ -473,7 +483,7 @@ dependencies = [
 [[package]]
 name = "cpns"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cpns?branch=main#85674ab2e70f11051ba30ab44a8c7d3301ac6ec1"
+source = "git+https://github.com/corbet-foss/cpns?branch=main#7b189964a9513f937ba774d603d4b5a327df640b"
 dependencies = [
  "getrandom 0.4.3",
  "sha2",
@@ -552,7 +562,7 @@ dependencies = [
 [[package]]
 name = "cshm"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cshm?branch=main#9fe8a3271ddecf0846d888d038645a55687c2111"
+source = "git+https://github.com/corbet-foss/cshm?branch=main#3218fafea65b38c08edbce635500c561fd10c981"
 dependencies = [
  "bigdecimal",
  "jsonschema",
@@ -564,7 +574,7 @@ dependencies = [
 [[package]]
 name = "csrh"
 version = "0.1.0"
-source = "git+https://github.com/corbet-foss/csrh?branch=main#7e9556401e710adeba49768b9d47faca94d17b18"
+source = "git+https://github.com/corbet-foss/csrh?branch=main#016b156befec58a15770abcf540d328a3a42d8f1"
 dependencies = [
  "cgrd",
  "cpfl",
@@ -622,7 +632,7 @@ dependencies = [
 [[package]]
 name = "cwst"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cwst?branch=main#1e3b964468aa9c18ab933842767008fadcbfc87e"
+source = "git+https://github.com/corbet-foss/cwst?branch=main#f1681ebb167f3d3328f994a6e5d8d5c44f5e68ea"
 dependencies = [
  "atomicwrites",
  "blake3",
@@ -645,7 +655,7 @@ dependencies = [
 [[package]]
 name = "cxch"
 version = "0.1.0"
-source = "git+https://github.com/corbet-foss/cxch?branch=main#61daa1fbd1b192d66e086c1e70359b47881dcb89"
+source = "git+https://github.com/corbet-foss/cxch?branch=main#000e7056cac53b24be5c2de73289b8f3cf1d463c"
 dependencies = [
  "cgrd",
  "cnvl",
@@ -933,6 +943,15 @@ dependencies = [
  "memchr",
  "pin-project-lite",
  "slab",
+]
+
+[[package]]
+name = "geographiclib-rs"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5a7f08910fd98737a6eda7568e7c5e645093e073328eeef49758cfe8b0489c7"
+dependencies = [
+ "libm",
 ]
 
 [[package]]
@@ -1383,6 +1402,15 @@ name = "minicov"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4869b6a491569605d66d3952bcdf03df789e5b536e5f0cf7758a7f08a55ae24d"
+dependencies = [
+ "cc",
+ "walkdir",
+]
+
+[[package]]
+name = "minicov"
+version = "0.3.9"
+source = "git+https://github.com/Amanieu/minicov?branch=master#03886b886ce16b9309ddd38e4824970e70fc0588"
 dependencies = [
  "cc",
  "walkdir",
@@ -2399,7 +2427,7 @@ dependencies = [
  "cast",
  "js-sys",
  "libm",
- "minicov",
+ "minicov 0.3.8",
  "nu-ansi-term",
  "num-traits",
  "oorandom",

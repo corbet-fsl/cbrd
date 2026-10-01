@@ -2,3 +2,4 @@
 /coverage.json
 /formatting.patch
 /resolution.txt
+__pycache__/

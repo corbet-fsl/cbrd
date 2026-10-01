@@ -290,3 +290,10 @@ shared!(one_link_and_owner_scopes_are_preserved, {
         &cgrd::matches(pair.requester().participant(), pair.owner().participant())
     );
 });
+
+// Link maintained profiling support only into the instrumented test binary.
+#[cfg(all(target_arch = "wasm32", owned_browser_coverage))]
+#[wasm_bindgen_test::wasm_bindgen_test]
+fn profiling_runtime_is_linked() {
+    let _ = browser_coverage_runtime::__owned_test_module_signature();
+}

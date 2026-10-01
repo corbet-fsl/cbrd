@@ -8,7 +8,7 @@ repository = "https://github.com/corbet-libs/cbrd"
 license-file = "LICENSE.md"
 
 [lib]
-crate-type = ["rlib", "cdylib"]
+crate-type = ["rlib"]
 
 [dependencies]
 clnk = { git = "https://github.com/corbet-foss/clnk", branch = "main" }
@@ -32,4 +32,8 @@ serde_json = "1"
 futures-executor = "0.3"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+browser-coverage-runtime = { path = ".ci/coverage-runtime" }
 wasm-bindgen-test = "0.3"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(owned_browser_coverage)"] }
