@@ -10,8 +10,13 @@ license-file = "LICENSE.md"
 [lib]
 crate-type = ["rlib"]
 
+[features]
+default = ["http"]
+http = ["clnk/http"]
+browser = ["clnk/browser"]
+
 [dependencies]
-clnk = { git = "https://github.com/corbet-foss/clnk", branch = "main" }
+clnk = { git = "https://github.com/corbet-foss/clnk", branch = "main", default-features = false }
 csrh = { git = "https://github.com/corbet-foss/csrh", branch = "main" }
 cxch = { git = "https://github.com/corbet-foss/cxch", branch = "main" }
 cgrp = { git = "https://github.com/corbet-foss/cgrp", branch = "main" }
@@ -21,11 +26,13 @@ cshm = { git = "https://github.com/corbet-foss/cshm", branch = "main" }
 serde = { version = "1", features = ["derive"] }
 schemars = "1"
 
-[dev-dependencies]
 cpfl = { git = "https://github.com/corbet-foss/cpfl", branch = "main" }
-cgrd = { git = "https://github.com/corbet-foss/cgrd", branch = "main", default-features = false }
 ckmg = { git = "https://github.com/corbet-foss/ckmg", branch = "main" }
 cwst = { git = "https://github.com/corbet-foss/cwst", branch = "main" }
+cchr = { git = "https://github.com/corbet-foss/cchr", branch = "main" }
+
+[dev-dependencies]
+cgrd = { git = "https://github.com/corbet-foss/cgrd", branch = "main", default-features = false }
 csgn = { git = "https://github.com/corbet-foss/csgn", branch = "main", default-features = false, features = ["volatile-signer"] }
 ed25519-dalek = { version = "3", default-features = false, features = ["fast"] }
 serde_json = "1"
@@ -37,3 +44,12 @@ wasm-bindgen-test = "0.3"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(owned_browser_coverage)"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+cfrm = { git = "https://github.com/corbet-libs/cfrm", branch = "main", features = ["server"] }
+cgth = { git = "https://github.com/corbet-libs/cgth", branch = "main" }
+csrn = { git = "https://github.com/corbet-libs/csrn", branch = "main" }
+cvtl = { git = "https://github.com/corbet-libs/cvtl", branch = "main" }
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+tower = { version = "0.5", features = ["util"] }
+tokio = { version = "1", features = ["rt", "time", "sync", "net", "macros"] }

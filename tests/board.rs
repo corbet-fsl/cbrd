@@ -9,7 +9,7 @@ use cpfl::{DeviceSigner, Draft, PortableCodec};
 use csgn::{Kind, SecretKey, Signer};
 use csrh::{Input, Verification, recheck};
 use cxch::Offer;
-use ed25519_dalek::{Signer as _, SigningKey};
+use ed25519_dalek::{Digest, Sha512, Signer as _, SigningKey};
 use serde_json::json;
 
 #[cfg(target_arch = "wasm32")]
@@ -29,6 +29,9 @@ impl DeviceSigner for Device {
     fn public_key(&self) -> [u8; 32] {
         self.0.verifying_key().to_bytes()
     }
+    fn hpke_public_key(&self) -> Result<[u8; 32], cpfl::Error> {
+        Ok(self.0.verifying_key().to_montgomery().to_bytes())
+    }
     fn sign(&mut self, bytes: &[u8]) -> Result<[u8; 64], cpfl::Error> {
         Ok(self.0.sign(bytes).to_bytes())
     }
@@ -44,7 +47,9 @@ fn schema() -> cshm::Schema {
 })).unwrap()
 }
 struct Fixture {
-    cipher: ckmg::passkey::StoreCipher,
+    hpke: [u8; 32],
+    device: [u8; 32],
+    member: String,
     wrapped: Vec<u8>,
     wire: Vec<u8>,
     keys: csgn::KeyRing,
@@ -100,7 +105,11 @@ impl Fixture {
             json!({"community":"garden","revision":1,"policy_epoch":2,"content":{"members":[],"devices":[]}}),
         );
         let mut fixture = Self {
-            cipher: store_cipher(&PrfOutput::from_bytes(&[3; 32]).unwrap(), "garden").unwrap(),
+            hpke: Sha512::digest(device.0.as_bytes())[..32]
+                .try_into()
+                .unwrap(),
+            device: device.public_key(),
+            member: member.into(),
             wrapped: vec![],
             wire: vec![],
             keys: issuer.key_ring().clone(),
@@ -122,9 +131,8 @@ impl Fixture {
                 vec![1],
                 0,
                 &mut device,
-                &cipher,
+                &fixture.custody(),
                 &PortableCodec,
-                &mut SystemEntropy,
                 &clean,
             )
             .unwrap()
@@ -148,12 +156,21 @@ impl Fixture {
             .to_vec();
         fixture
     }
-    fn key(&self) -> cnvl::ReadKey {
+    fn custody(&self) -> cnvl::Custodian<'_> {
+        cnvl::Custodian::from_keys(&self.hpke, &[44; 32], "garden", &self.member, self.device)
+            .unwrap()
+    }
+    fn key(&self) -> cnvl::ReadKey<'_> {
         let publication = cpfl::Publication::from_bytes(&self.wire).unwrap();
         let verified =
             cpfl::verify_publication(&publication, &self.policy(), &self.schema, 1, &clean)
                 .unwrap();
-        cnvl::ReadKey::unwrap(&self.cipher, verified.context(), &self.wrapped).unwrap()
+        self.custody()
+            .restore(
+                verified.context(),
+                &cnvl::WrappedReadKey::from_bytes(&self.wrapped).unwrap(),
+            )
+            .unwrap()
     }
     fn policy(&self) -> cgrd::PublishedPolicy<'_> {
         cgrd::PublishedPolicy {
@@ -200,7 +217,7 @@ shared!(one_link_and_owner_scopes_are_preserved, {
     assert!(
         board
             .connect(clnk::ChallengeInput {
-                credential: vec![1]
+                publication: vec![1]
             })
             .await
             .is_err()
