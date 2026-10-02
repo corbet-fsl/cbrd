@@ -11,24 +11,22 @@ reexported directly; their runtime adapters remain unavailable. See the
 
 ## Scope
 
-Board is the member facade for profiles, presence, discovery, private-profile
-exchange, groups and public rooms. It wires Link, Profile, Envelope, Exchange,
-Search, Groups, Attend and Compression, and delivers committed block, change and
-departure events to their owners in order. Contacts owns blocking relationships;
-Guard owns validation and matching.
+### Purpose
 
-Link alone owns all Forum connections. Its authenticated presence/forum session
-and anonymous public-room session must be unlinkable; anonymous rooms use blind
-room passes. No child opens an independent Forum client. Board owns no profile,
-index, roster, presence switch, matching engine or duplicate authority.
+cbrd Board is the member-side forum facade and the only member facade that connects to cfrm, covering profile, presence, discovery, private-profile exchange, groups and public rooms through one Link.
 
-Its state is derived: offline, needs profile or credential, present, or needs
-resynchronization. Ports cover profile/rules, presence/discovery, exchange,
-GroupView, consent/fork/suggestion and rooms. Tests must demonstrate committed event
-ordering, community isolation, no profile keys at Forum, both session classes
-through Link, group policy/consent and listing handover. Current local composition
-and unavailable adapters are listed in [the contract](docs/CONTRACT.md).
+### Owns
 
-Board accepts the Link owner’s typed anonymous-client attachment while retaining
-exactly one Link. Its room status remains unavailable until the actual Attend
-authority and shared transaction adapter are connected.
+Wiring of Link, Profile, Envelope, Exchange, Search, Groups, Attend and Compression, and delivery of block, change and departure events to their owners in committed order. It uses blocking rules from Contacts and validation from Guard.
+
+### Never
+
+No second cfrm client for any child. No duplicate profile, index or roster, no ownership of contacts, and no matching implementation. No presence switch or presence library: connecting is presence. No content-check library: content checks belong to Guard. Only Board talks to cfrm, and keys never reach cfrm.
+
+### States
+
+Derived states only: Offline, NeedsProfileOrCredential, Present, NeedsResync.
+
+### Test obligations
+
+Block, change and departure events reach children in committed order; profile keys never reach cfrm; discovery, exchange and room joins work through one Link; Vault, Foyer and Inbox have no forum dependency; group consent, policy bands and listing handover are covered. Shared obligations apply: native and WebAssembly builds with identical test vectors, explicit state machines with injected clock, randomness, storage and network, thin facades with no duplicated state or crypto, full line and branch coverage with real round trips and injected delay, duplication, loss, cancellation, clock regression, corruption and storage conflicts, atomic publication with acknowledgement only after durable acceptance and reconciliation of unknown outcomes, strict per-community isolation, bounded bytes, queues and work with no identifiers, plaintext or secrets in errors, reuse of maintained third-party code with no own crypto, and no personal identifiers in outbound requests.
