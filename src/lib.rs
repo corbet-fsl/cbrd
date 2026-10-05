@@ -494,6 +494,22 @@ impl<T: clnk::Transport, R> Board<T, R> {
         cxch::inspect(offer, inputs.0, inputs.1, verification, key, contact)
             .map_err(|_| Error::Rejected)
     }
+    /// Local give-first inspection from an original Auth-mode Envelope capsule.
+    /// Exchange rechecks the exact signed pair and retains no received key.
+    /// This does not authorize outgoing keys, notices, transport or replay adoption.
+    pub fn inspect_transfer(
+        &self,
+        offer: &cxch::Offer,
+        inputs: (csrh::Input<'_>, csrh::Input<'_>),
+        verification: &csrh::Verification<'_>,
+        transfer: &cnvl::KeyTransfer,
+        custody: &cnvl::Custodian<'_>,
+        contact: &impl Fn(&str) -> cshm::ContactCheck,
+    ) -> Result<cxch::Inspection, Error> {
+        self.scope(verification)?;
+        cxch::inspect_transfer(offer, inputs, verification, transfer, custody, contact)
+            .map_err(|_| Error::Rejected)
+    }
     fn current_verification(&self, verification: &Verification<'_>) -> Result<(), Error> {
         self.scope(verification)?;
         if self.link.now_ms().map_err(|_| Error::Unavailable)? / 1000

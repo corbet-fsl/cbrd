@@ -172,6 +172,33 @@ impl Fixture {
             )
             .unwrap()
     }
+    fn transfer_to(&self, recipient: &Fixture, nonce: [u8; 32]) -> cnvl::KeyTransfer {
+        let source = cpfl::Publication::from_bytes(&self.wire).unwrap();
+        let destination = cpfl::Publication::from_bytes(&recipient.wire).unwrap();
+        let source_bundle: cgrd::Bundle = serde_json::from_slice(&source.public_bundle).unwrap();
+        let destination_bundle: cgrd::Bundle =
+            serde_json::from_slice(&destination.public_bundle).unwrap();
+        let sender = cgrd::verify_recipient_with_contact(
+            &source_bundle,
+            &self.member,
+            &self.policy(),
+            &self.schema,
+            &clean,
+        )
+        .unwrap();
+        let receiver = cgrd::verify_recipient_with_contact(
+            &destination_bundle,
+            &recipient.member,
+            &recipient.policy(),
+            &recipient.schema,
+            &clean,
+        )
+        .unwrap();
+        // Real original crypto prepares a test capsule. This proves no outgoing
+        // Exchange permission, replay journal, live G3 or Mesh acceptance.
+        let binding = cnvl::TransferContext::new(&self.wire, &recipient.wire, 1, 1, nonce).unwrap();
+        self.key().release(&sender, &receiver, &binding).unwrap()
+    }
     fn policy(&self) -> cgrd::PublishedPolicy<'_> {
         cgrd::PublishedPolicy {
             policy: cgrd::Policy {
@@ -247,6 +274,31 @@ shared!(one_link_and_owner_scopes_are_preserved, {
         .unwrap();
     assert!(pair.decision().is_match());
     let offer = Offer::new(&pair, [8; 32], 1100, 1200).unwrap();
+    let transfer = alice.transfer_to(&bob, offer.nonce());
+    let capsule = cnvl::KeyTransfer::from_bytes(&transfer.to_bytes().unwrap()).unwrap();
+    let inspected = board
+        .inspect_transfer(
+            &offer,
+            (alice.input("alice"), bob.input("bob")),
+            &verification,
+            &capsule,
+            &bob.custody(),
+            &clean,
+        )
+        .unwrap();
+    assert!(inspected.decision().is_match());
+    assert_eq!(inspected.requester_profile().private["secret"], json!(true));
+    assert!(matches!(
+        board.inspect_transfer(
+            &offer,
+            (alice.input("alice"), bob.input("bob")),
+            &verification,
+            &capsule,
+            &alice.custody(),
+            &clean,
+        ),
+        Err(Error::Rejected)
+    ));
     assert!(
         board
             .inspect(
@@ -280,6 +332,17 @@ shared!(one_link_and_owner_scopes_are_preserved, {
         Err(Error::Rejected)
     ));
     let foreign = Board::new("other".into(), clnk::Link::new(Offline)).unwrap();
+    assert!(matches!(
+        foreign.inspect_transfer(
+            &offer,
+            (alice.input("alice"), bob.input("bob")),
+            &verification,
+            &capsule,
+            &bob.custody(),
+            &clean,
+        ),
+        Err(Error::Scope)
+    ));
     assert!(matches!(
         foreign.recheck(
             alice.input("alice"),
