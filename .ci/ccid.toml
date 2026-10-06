@@ -1,0 +1,36 @@
+schema = 1
+project = "cbrd"
+
+# .ci/ccid.toml for corbet-libs/cbrd — runtime adapter.
+# Ports ALL Linux gates from .github/workflows/ci.yml (jobs resolve,
+# dependency-policy, check, coverage incl. native + wasm browser coverage)
+# into .ci/verify.sh in CI ordering, environment, and flags.
+# kind="cargo" is not used: gates need the fmt patch dance (not --check),
+# wasm-pack browser vectors, lock-derived wasm-bindgen provisioning, exact
+# browser coverage env, and nightly native+browser coverage that the cargo
+# kind cannot express.
+# Pure resolve-job selftests preserved in verify: resolve's committed-graph
+# `check-first-party.py` plus coverage's `test-source-coverage.py`
+# (cargo-update refresh and dependabot-auto-merge are separate, excluded).
+# No cargo-deny gate exists in this repo's CI, so no advisories check is
+# declared. The binding version rides in binding-version.txt (adapts CI's
+# GITHUB_OUTPUT step) and is a cache output (derived work artifact).
+# Python transitive env: requirements.txt pins exactly `selenium>=4`; the
+# runner supplies it job-locally through a pinned python3.withPackages
+# environment (no PyPI round trip), verify falls back to pip only if the
+# import fails.
+
+[checks.verify]
+kind = "commands"
+commands = [["bash", ".ci/verify.sh"]]
+cache_tools = [["rustc", "-vV"], ["cargo", "--version"], ["rustup", "run", "nightly", "rustc", "-vV"], ["rustup", "run", "nightly", "cargo", "llvm-cov", "--version"], ["python3", "--version"], ["python3", "-c", "import selenium; print(selenium.__version__)"], ["wasm-pack", "--version"], ["clang", "--version"], ["curl", "--version"], ["chromedriver", "--version"], ["chromium", "--version"]]
+cache_outputs = ["coverage.json", "coverage.lcov", "coverage.txt", "wasm-coverage.json", "wasm-coverage.lcov", "wasm-coverage.txt", "binding-version.txt"]
+
+[render]
+tool_revision = "81ebac8e86e20bc93b69d5e912bbcb0c0d036d58"
+
+[jobs.verify]
+scheduler = "crow"
+checks = ["verify"]
+workflow = "repository-jobs"
+command = ["bash", ".ci/run-cached.sh"]
