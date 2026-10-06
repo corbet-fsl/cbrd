@@ -1,5 +1,6 @@
 schema = 1
 project = "cbrd"
+repository = "https://git.corbet.ch/corbet-libs/cbrd.git"
 
 # .ci/ccid.toml for corbet-libs/cbrd — runtime adapter.
 # Ports ALL Linux gates from .github/workflows/ci.yml (jobs resolve,
@@ -27,10 +28,17 @@ cache_tools = [["rustc", "-vV"], ["cargo", "--version"], ["rustup", "run", "nigh
 cache_outputs = ["coverage.json", "coverage.lcov", "coverage.txt", "wasm-coverage.json", "wasm-coverage.lcov", "wasm-coverage.txt", "binding-version.txt"]
 
 [render]
-tool_revision = "81ebac8e86e20bc93b69d5e912bbcb0c0d036d58"
+tool_revision = "53c129c2efa3b9279d2ecbc237d15acdfb656d8c"
 
 [jobs.verify]
 scheduler = "crow"
 checks = ["verify"]
 workflow = "repository-jobs"
 command = ["bash", ".ci/run-cached.sh"]
+
+[push_consumer.cmsg-v01]
+consumer = "https://git.corbet.ch/corbet-libs/cmsg.git"
+branch = "v01"
+consumer_branch = "v01"
+job = "v01-push"
+self_name = "cbrd"
