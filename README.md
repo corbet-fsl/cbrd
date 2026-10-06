@@ -32,3 +32,44 @@ and unavailable adapters are listed in [the contract](docs/CONTRACT.md).
 Board accepts the Link owner’s typed anonymous-client attachment while retaining
 exactly one Link. Its room status remains unavailable until the actual Attend
 authority and shared transaction adapter are connected.
+
+## Unreleased runtime successor
+
+The integration candidate adds actual challenge/enter and per-request signing
+ports through Link, with injected time and original Forum wire types. Native and
+browser HTTPS transports are owned by Forum and reexported through Link. Link
+keeps no private signing key, clears cancelled/expired/refused attendance and does
+not retry ambiguous effects. Graceful departure uses an actual signed Depart;
+`disconnect` clears local state and leaves an unreachable server lease to expire.
+Board rechecks received original publications through Search before returning a
+page, and checks exact Profile revision/ciphertext binding on retrieval. New paths
+are uncompiled pending owner main releases; no complete coverage or live delivery
+is claimed. Incremental delta handling, Mesh key-release composition and anonymous
+room authority remain integration work.
+
+The current source separates async `receive_search`/`receive_watch`/
+`receive_ciphertext` from synchronous `finish_search`/`finish_watch`/
+`finish_ciphertext`. Pending outputs have no serializer or content accessor.
+After network completion the runtime rebuilds the original current Charter/Guard
+and reloads the exact committed Profile, then finishes with those actual owners.
+Finishers and display reads require the original Link clock second to equal the
+verification time. Watch is bound to the last held opaque window cursor; Search
+owns bounded delta application. Committed local removals invalidate that polling
+baseline immediately. Raw generic execute refuses search/watch/ciphertext.
+Written actual-server vectors cover joins/leaves, stale-clock response refusal,
+real revocation between receive and finish, and original anonymous pass custody.
+They have not yet been compiled or executed. G2 currentness, HPKE Exchange,
+original member MLS and full qualified source gates still remain integration work.
+
+The `ReadContext` adapter is the cmsg-facing completion path. It borrows the
+actual unlocked Store, current Keys Binding, Foyer's one VerifiedCharter and
+original contact detector; `ReadPolicy` requires the trusted deployment action
+and maximum snapshot age in seconds. `finish_search_committed`,
+`finish_watch_committed`, `finish_ciphertext_committed` and
+`read_discovery_committed` load the canonical Profile through its own
+`load_current_committed` port and build current Charter policy inside Board.
+No shell supplies an own publication, floor or Guard policy. Original finishers
+still check exact Link attendance/publication, reciprocal matching and envelope
+binding. Clock is checked again before returning, and any refusal clears the
+held view. The parent must reconcile actual Vault/Keys freshness and current G3
+before borrowing; this adapter does not manufacture G2 or G3 authority.
