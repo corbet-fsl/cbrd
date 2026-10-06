@@ -24,6 +24,7 @@ project = "cbrd"
 kind = "commands"
 commands = [["bash", ".ci/verify.sh"]]
 cache_tools = [["rustc", "-vV"], ["cargo", "--version"], ["rustup", "run", "nightly", "rustc", "-vV"], ["rustup", "run", "nightly", "cargo", "llvm-cov", "--version"], ["python3", "--version"], ["python3", "-c", "import selenium; print(selenium.__version__)"], ["wasm-pack", "--version"], ["clang", "--version"], ["curl", "--version"], ["chromedriver", "--version"], ["chromium", "--version"]]
+cache_env = ["CBRD_WASM_CLANG"]
 cache_outputs = ["coverage.json", "coverage.lcov", "coverage.txt", "wasm-coverage.json", "wasm-coverage.lcov", "wasm-coverage.txt", "binding-version.txt"]
 
 [render]
