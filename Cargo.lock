@@ -285,7 +285,7 @@ checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 [[package]]
 name = "cfrm"
 version = "0.2.0"
-source = "git+https://github.com/corbet-libs/cfrm?branch=main#14136269af06a07ecf61ace4d5a694fab750c051"
+source = "git+https://github.com/corbet-libs/cfrm?branch=main#5c749458ded6ba69a525d2a6d0e0dcf638a40e42"
 dependencies = [
  "schemars",
  "serde",
@@ -297,7 +297,7 @@ dependencies = [
 [[package]]
 name = "cgrd"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cgrd?branch=main#d1cacbdb863534183d27de468359f657aa7174fa"
+source = "git+https://github.com/corbet-foss/cgrd?branch=main#fd3929858ca29ac5c228a08bc11ac0f7e575176f"
 dependencies = [
  "bigdecimal",
  "cpns",
@@ -317,7 +317,7 @@ dependencies = [
 [[package]]
 name = "cgrp"
 version = "0.1.0"
-source = "git+https://github.com/corbet-foss/cgrp?branch=main#52fcc459cf55ff17d68bfb37c0b2c0f87271e733"
+source = "git+https://github.com/corbet-foss/cgrp?branch=main#86e62fc3e521df63daa1df0478a55404211742a9"
 dependencies = [
  "ckmg",
  "schemars",
@@ -392,7 +392,7 @@ dependencies = [
 [[package]]
 name = "ckmg"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/ckmg?branch=main#08c47d7495b67dc28a795075d9d6ebb65667f663"
+source = "git+https://github.com/corbet-foss/ckmg?branch=main#86beae6226af7786b3dba7d2511181a4c0a276ae"
 dependencies = [
  "blake3",
  "chacha20poly1305",
@@ -412,7 +412,7 @@ dependencies = [
 [[package]]
 name = "clnk"
 version = "0.1.0"
-source = "git+https://github.com/corbet-foss/clnk?branch=main#51fbede5d93a49f2b0515ef057d127949b1c5c06"
+source = "git+https://github.com/corbet-foss/clnk?branch=main#e6531167c10794fe25c8f0f0b200d081df8326ed"
 dependencies = [
  "cfrm",
  "schemars",
@@ -428,7 +428,7 @@ checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
 [[package]]
 name = "cnvl"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cnvl?branch=main#eabf269b5d1d85a194911dbd19f6cf49d34892ea"
+source = "git+https://github.com/corbet-foss/cnvl?branch=main#f7b669e6b62dc79786cdf1f2eeefa9dd435477fd"
 dependencies = [
  "chacha20poly1305",
  "ckmg",
@@ -462,7 +462,7 @@ dependencies = [
 [[package]]
 name = "cpfl"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cpfl?branch=main#038750818f149b5c1736f74baa36633f26cf75b0"
+source = "git+https://github.com/corbet-foss/cpfl?branch=main#d756d6bf4f570397db7180a9f2f183bccd3432a1"
 dependencies = [
  "blake3",
  "cgrd",
@@ -483,7 +483,7 @@ dependencies = [
 [[package]]
 name = "cpns"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cpns?branch=main#7b189964a9513f937ba774d603d4b5a327df640b"
+source = "git+https://github.com/corbet-foss/cpns?branch=main#1b48250510323dea37388f394d1fd5be2e04d2cb"
 dependencies = [
  "getrandom 0.4.3",
  "sha2",
@@ -494,7 +494,7 @@ dependencies = [
 [[package]]
 name = "cprz"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cprz?branch=main#29408cbba494f2eb02a7f5b6157b793a82905688"
+source = "git+https://github.com/corbet-foss/cprz?branch=main#12bb1986310cecfbc9846cf0981f458b828507a4"
 dependencies = [
  "cprz-blob",
 ]
@@ -502,7 +502,7 @@ dependencies = [
 [[package]]
 name = "cprz-blob"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cprz?branch=main#29408cbba494f2eb02a7f5b6157b793a82905688"
+source = "git+https://github.com/corbet-foss/cprz?branch=main#12bb1986310cecfbc9846cf0981f458b828507a4"
 dependencies = [
  "brotli",
 ]
@@ -510,7 +510,7 @@ dependencies = [
 [[package]]
 name = "cprz-pad"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cprz?branch=main#29408cbba494f2eb02a7f5b6157b793a82905688"
+source = "git+https://github.com/corbet-foss/cprz?branch=main#12bb1986310cecfbc9846cf0981f458b828507a4"
 
 [[package]]
 name = "cpufeatures"
@@ -524,7 +524,7 @@ dependencies = [
 [[package]]
 name = "crbk"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/crbk?branch=main#ee4f73334818e2053c7df3d123a8e3b8cc23b2cf"
+source = "git+https://github.com/corbet-foss/crbk?branch=main#5a458f97bf7310811cb71d1be86d84d26ec69500"
 dependencies = [
  "serde",
  "serde_json",
@@ -549,7 +549,7 @@ dependencies = [
 [[package]]
 name = "csgn"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/csgn?branch=main#96f946b89efd67d79f841259ee914a4f6f43dcd0"
+source = "git+https://github.com/corbet-foss/csgn?branch=main#eae94a676b5658c55588cbb903c9d88a088cf81b"
 dependencies = [
  "ciborium-ll",
  "coset",
@@ -562,7 +562,7 @@ dependencies = [
 [[package]]
 name = "cshm"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cshm?branch=main#2fddfc89a3e3503df1430cd22eaf090ca52bc694"
+source = "git+https://github.com/corbet-foss/cshm?branch=main#812b39b7a7621da7e5efa42ddf0be4ab568f224f"
 dependencies = [
  "bigdecimal",
  "jsonschema",
@@ -574,7 +574,7 @@ dependencies = [
 [[package]]
 name = "csrh"
 version = "0.1.0"
-source = "git+https://github.com/corbet-foss/csrh?branch=main#016b156befec58a15770abcf540d328a3a42d8f1"
+source = "git+https://github.com/corbet-foss/csrh?branch=main#eed8ad379689d8f5997a5b27402cbda5904bb41e"
 dependencies = [
  "cgrd",
  "cpfl",
@@ -584,7 +584,7 @@ dependencies = [
 [[package]]
 name = "ctnd"
 version = "0.1.0"
-source = "git+https://github.com/corbet-foss/ctnd?branch=main#88ee8ae5eff1235d43f55d39bfbe2ed6fc2ffa6e"
+source = "git+https://github.com/corbet-foss/ctnd?branch=main#d5db00793e1ac5f8f72441b062a8acd968c25efd"
 dependencies = [
  "cgrp",
  "schemars",
@@ -632,7 +632,7 @@ dependencies = [
 [[package]]
 name = "cwst"
 version = "0.0.0"
-source = "git+https://github.com/corbet-foss/cwst?branch=main#f1681ebb167f3d3328f994a6e5d8d5c44f5e68ea"
+source = "git+https://github.com/corbet-foss/cwst?branch=main#d3e16e17907028ac7700b2bc730eac24508a9280"
 dependencies = [
  "atomicwrites",
  "blake3",
@@ -655,7 +655,7 @@ dependencies = [
 [[package]]
 name = "cxch"
 version = "0.1.0"
-source = "git+https://github.com/corbet-foss/cxch?branch=main#000e7056cac53b24be5c2de73289b8f3cf1d463c"
+source = "git+https://github.com/corbet-foss/cxch?branch=main#d6cb03ad5410b1230e272cc327767f11b8574d6f"
 dependencies = [
  "cgrd",
  "cnvl",
