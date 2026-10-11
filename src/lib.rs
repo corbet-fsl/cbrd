@@ -1,5 +1,6 @@
 //! Same-community device Board composition. All authority and domain transitions
 //! stay with the leaf owners; the sole Forum connection is Link.
+#![forbid(unsafe_code)]
 mod committed;
 pub use cgrp::GroupView;
 pub use clnk::{self, Challenge, Prepared, cfrm};
