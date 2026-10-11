@@ -94,6 +94,8 @@ impl Fixture {
             &mut issuer,
             Kind::Credential,
             json!(cgrd::Credential {
+                purpose: cgrd::CredentialPurpose::CommunityCredentialV2,
+                issuance_action: "community.admit".into(),
                 community: "garden".into(),
                 member: member.into(),
                 handle: "mountain".into(),

@@ -77,6 +77,8 @@ impl Fixture {
         let mut issuer =
             Signer::new("garden", SecretKey::from_seed(&mut [11; 32]), 1000, 10000).unwrap();
         let credential = cgrd::Credential {
+            purpose: cgrd::CredentialPurpose::CommunityCredentialV2,
+            issuance_action: "admission".into(),
             community: "garden".into(),
             member: member.into(),
             handle: "mountain".into(),
@@ -203,6 +205,7 @@ impl Fixture {
         cgrd::PublishedPolicy {
             policy: cgrd::Policy {
                 community: "garden",
+                expected_issuance_action: "admission",
                 keys: &self.keys,
                 now: 1100,
                 minimum_epoch: 2,
@@ -213,7 +216,6 @@ impl Fixture {
             },
             revocations: &self.revocations,
             minimum_revocations_revision: 1,
-            action: "admission",
         }
     }
     fn input<'a>(&'a self, member: &'a str) -> Input<'a> {

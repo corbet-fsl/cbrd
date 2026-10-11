@@ -22,7 +22,7 @@ cxch = { git = "https://git.corbet.ch/corbet-foss/cxch.git", branch = "v01" }
 cgrp = { git = "https://git.corbet.ch/corbet-foss/cgrp.git", branch = "v01" }
 ctnd = { git = "https://git.corbet.ch/corbet-foss/ctnd.git", branch = "v01" }
 cnvl = { git = "https://git.corbet.ch/corbet-foss/cnvl.git", branch = "v01" }
-cshm = { git = "https://git.corbet.ch/corbet-foss/cshm.git", branch = "v01" }
+cshm = { git = "https://git.corbet.ch/corbet-foss/cshm", branch = "main" }
 serde = { version = "1", features = ["derive"] }
 schemars = "1"
 
@@ -32,8 +32,8 @@ cwst = { git = "https://git.corbet.ch/corbet-foss/cwst.git", branch = "v01" }
 cchr = { git = "https://git.corbet.ch/corbet-foss/cchr.git", branch = "v01" }
 
 [dev-dependencies]
-cgrd = { git = "https://git.corbet.ch/corbet-foss/cgrd.git", branch = "v01", default-features = false }
-csgn = { git = "https://git.corbet.ch/corbet-foss/csgn.git", branch = "v01", default-features = false, features = ["volatile-signer"] }
+cgrd = { git = "https://git.corbet.ch/corbet-foss/cgrd", branch = "main", default-features = false }
+csgn = { git = "https://git.corbet.ch/corbet-foss/csgn", branch = "main", default-features = false, features = ["volatile-signer"] }
 ed25519-dalek = { version = "3", default-features = false, features = ["fast"] }
 serde_json = "1"
 futures-executor = "0.3"
