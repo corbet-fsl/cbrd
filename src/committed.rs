@@ -75,6 +75,32 @@ impl<T: clnk::Transport, R> Board<T, R> {
         })
     }
 
+    /// Local group views from the committed Groups checkpoint under the policy
+    /// projected from the freshly borrowed Charter's signed settings. Read-only:
+    /// no consent, membership or network operation, and no Forum traffic.
+    pub fn read_groups_committed<B: cwst::backend::Backend>(
+        &self,
+        context: &ReadContext<'_, B>,
+    ) -> Result<Vec<cgrp::GroupView>, Error> {
+        if context.binding.community() != self.community
+            || context.charter.community() != self.community
+            || !context.store.is_scope(&self.community)
+        {
+            return Err(Error::Scope);
+        }
+        let now = self.link.now_ms().map_err(|_| Error::Unavailable)? / 1000;
+        let settings = context
+            .charter
+            .settings(now)
+            .map_err(|_| Error::Unavailable)?;
+        let source = crate::SettingsPolicy::new(settings, context.charter.valid_until());
+        let policy = cgrp::PolicySource::current(&source, &self.community, now)
+            .map_err(|_| Error::Rejected)?;
+        cgrp::Snapshot::load(&self.community, context.store)
+            .and_then(|snapshot| snapshot.views(&policy, now))
+            .map_err(|_| Error::Rejected)
+    }
+
     fn with_committed<B: cwst::backend::Backend, O>(
         &mut self,
         context: &ReadContext<'_, B>,

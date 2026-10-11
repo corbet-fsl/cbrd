@@ -2,10 +2,13 @@
 //! stay with the leaf owners; the sole Forum connection is Link.
 #![forbid(unsafe_code)]
 mod committed;
-pub use cgrp::GroupView;
+mod policy;
+pub use cgrp::{self, GroupView};
 pub use clnk::{self, Challenge, Prepared, cfrm};
 pub use committed::{ReadContext, ReadPolicy};
+pub use crbk;
 pub use csrh::{Discovery, Input, Verification, ViewLimits};
+pub use policy::{SettingsPolicy, project as project_group_policy};
 /// A bounded locally rechecked page; original owner types carry its evidence.
 pub struct Page {
     pub pairs: Vec<csrh::CheckedPair>,
