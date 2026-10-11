@@ -19,7 +19,7 @@ browser = ["clnk/browser"]
 clnk = { git = "https://git.corbet.ch/corbet-foss/clnk.git", branch = "v01", default-features = false }
 csrh = { git = "https://git.corbet.ch/corbet-foss/csrh.git", branch = "v01" }
 cxch = { git = "https://git.corbet.ch/corbet-foss/cxch.git", branch = "v01" }
-cgrp = { git = "https://git.corbet.ch/corbet-foss/cgrp.git", branch = "board" }
+cgrp = { git = "https://git.corbet.ch/corbet-foss/cgrp.git", branch = "v01" }
 ctnd = { git = "https://git.corbet.ch/corbet-foss/ctnd.git", branch = "v01" }
 cnvl = { git = "https://git.corbet.ch/corbet-foss/cnvl.git", branch = "v01" }
 crbk = { git = "https://git.corbet.ch/corbet-foss/crbk", branch = "main", default-features = false }
