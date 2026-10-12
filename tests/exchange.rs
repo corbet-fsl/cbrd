@@ -108,7 +108,7 @@ struct Member {
     hpke: [u8; 32],
     store: cwst::Store<cwst::backend::Memory>,
     binding: ckmg::Binding,
-    charter: cchr::Charter,
+    current: &'static cchr::VerifiedCharter,
     credential: Vec<u8>,
     operations: Cell<u8>,
 }
@@ -130,17 +130,21 @@ fn range(min: &str, max: &str) -> Vec<cgrd::Rule> {
 impl Member {
     async fn new(name: &str, seed: u8) -> Self {
         let mut issuer = issuer();
-        let mut charter = cchr::Charter::new(cchr::Configuration {
-            origin: "https://identity.example.test".into(),
-            community: "garden".into(),
-            key_ring: issuer.key_ring().to_cbor(),
-            minimum_revision: 1,
-            ring_revision: 0,
-        })
-        .unwrap();
+        let charter = Box::leak(Box::new(
+            cchr::Charter::new(cchr::Configuration {
+                origin: "https://identity.example.test".into(),
+                community: "garden".into(),
+                key_ring: issuer.key_ring().to_cbor(),
+                minimum_revision: 1,
+                ring_revision: 0,
+            })
+            .unwrap(),
+        ));
         charter
             .install(&serde_json::to_vec(&feed()).unwrap(), NOW)
             .unwrap();
+        // The Charter lives as long as the test process; `current` borrows it.
+        let current: &'static cchr::VerifiedCharter = charter.current(NOW).unwrap();
         let device = SigningKey::from_bytes(&[seed; 32]);
         let credential = sign(
             &mut issuer,
@@ -167,7 +171,7 @@ impl Member {
                 .await
                 .unwrap(),
             binding: ckmg::Binding::new("garden", name).unwrap(),
-            charter,
+            current,
             credential,
             operations: Cell::new(1),
         }
@@ -191,7 +195,7 @@ impl Member {
         ReadContext {
             store: &self.store,
             binding: &self.binding,
-            charter: self.charter.current(NOW).unwrap(),
+            charter: self.current,
             policy: ReadPolicy {
                 admission_action: ACTION,
                 maximum_snapshot_age: 300,
@@ -221,7 +225,7 @@ impl Member {
     async fn publish(&mut self, board: &Board<Offline>, edit: Edit, blocked: &[String]) -> u64 {
         let candidate = self.prepare(board, edit, blocked).unwrap();
         let operation = self.operation();
-        let current = self.charter.current(NOW).unwrap();
+        let current = self.current;
         let policy = current.admission_policy(ACTION, NOW, 300).unwrap();
         commit_profile(
             candidate,
@@ -304,7 +308,7 @@ async fn publication_revisions_follow_the_commit_and_blocks_travel_as_rules() {
         .publish(&board, edit(31, rules), &["carol".into(), "carol".into()])
         .await;
     assert_eq!(alice.revision(), 2);
-    let current = alice.charter.current(NOW).unwrap();
+    let current = alice.current;
     let committed = cpfl::load_current_committed(
         &alice.store,
         &alice.binding,
