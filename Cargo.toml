@@ -14,9 +14,10 @@ crate-type = ["rlib"]
 default = ["http"]
 http = ["clnk/http"]
 browser = ["clnk/browser"]
+ohttp = ["clnk/ohttp"]
 
 [dependencies]
-clnk = { git = "https://git.corbet.ch/corbet-foss/clnk.git", branch = "v01", default-features = false }
+clnk = { git = "https://git.corbet.ch/corbet-foss/clnk.git", branch = "ohttp", default-features = false }
 csrh = { git = "https://git.corbet.ch/corbet-foss/csrh.git", branch = "v01" }
 cxch = { git = "https://git.corbet.ch/corbet-foss/cxch.git", branch = "v01" }
 cgrp = { git = "https://git.corbet.ch/corbet-foss/cgrp.git", branch = "v01" }
@@ -48,7 +49,7 @@ wasm-bindgen-test = "0.3"
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(owned_browser_coverage)"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-cfrm = { git = "https://git.corbet.ch/corbet-libs/cfrm.git", branch = "v01", features = ["server"] }
+cfrm = { git = "https://git.corbet.ch/corbet-libs/cfrm.git", branch = "ohttp-on-18b6056", features = ["server"] }
 cgth = { git = "https://git.corbet.ch/corbet-libs/cgth.git", branch = "v01" }
 csrn = { git = "https://git.corbet.ch/corbet-libs/csrn.git", branch = "v01" }
 cvtl = { git = "https://git.corbet.ch/corbet-libs/cvtl.git", branch = "v01" }
