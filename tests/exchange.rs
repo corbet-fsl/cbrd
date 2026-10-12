@@ -154,7 +154,7 @@ impl Member {
                 issuance_action: ACTION.into(),
                 community: "garden".into(),
                 member: name.into(),
-                handle: name.into(),
+                handle: format!("{name}garden"),
                 schema_version: 1,
                 policy_epoch: 2,
                 gates: vec![],
