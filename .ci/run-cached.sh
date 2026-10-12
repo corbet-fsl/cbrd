@@ -69,6 +69,8 @@ test -x "$cargo_bin"
 export PATH="$(dirname "$cargo_bin"):$PATH"
 export CCID_SOURCE_REVISION="$CI_COMMIT_SHA"
 "$CCID_BIN" render --repo "$PWD" --check
+export ARTIFACT_ROOT="${ARTIFACT_ROOT:-$state/release-artifacts}"
+mkdir -p "$ARTIFACT_ROOT"
 if [ "$CHECKS" = "resolve-dependencies" ] || [ "$CHECKS" = "native" ]; then
   exec "$CCID_BIN" check --repo "$PWD" --check "$CHECKS"
 fi
