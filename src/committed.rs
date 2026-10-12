@@ -101,27 +101,6 @@ impl<T: clnk::Transport, R> Board<T, R> {
             .map_err(|_| Error::Rejected)
     }
 
-    /// The Groups policy projected from the freshly borrowed Charter's signed
-    /// settings, for write commands that run after this synchronous read.
-    pub fn read_group_policy_committed<B: cwst::backend::Backend>(
-        &self,
-        context: &ReadContext<'_, B>,
-    ) -> Result<cgrp::Policy, Error> {
-        if context.binding.community() != self.community
-            || context.charter.community() != self.community
-            || !context.store.is_scope(&self.community)
-        {
-            return Err(Error::Scope);
-        }
-        let now = self.link.now_ms().map_err(|_| Error::Unavailable)? / 1000;
-        let settings = context
-            .charter
-            .settings(now)
-            .map_err(|_| Error::Unavailable)?;
-        let source = crate::SettingsPolicy::new(settings, context.charter.valid_until());
-        cgrp::PolicySource::current(&source, &self.community, now).map_err(|_| Error::Rejected)
-    }
-
     fn with_committed<B: cwst::backend::Backend, O>(
         &mut self,
         context: &ReadContext<'_, B>,

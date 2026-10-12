@@ -1,20 +1,13 @@
 //! Same-community device Board composition. All authority and domain transitions
 //! stay with the leaf owners; the sole Forum connection is Link.
 #![forbid(unsafe_code)]
-mod authority;
 mod committed;
-mod groups;
 mod policy;
-pub use authority::{BoardAuthority, Contacts, Devices, Seeds};
 pub use cgrp::{self, GroupView};
 pub use clnk::{self, Challenge, Prepared, cfrm};
 pub use committed::{ReadContext, ReadPolicy};
 pub use crbk;
 pub use csrh::{Discovery, Input, Verification, ViewLimits};
-pub use groups::{
-    CONSENT_SECONDS, GroupOwner, Intent as GroupIntent, PolicyAt, PortFuture, Signed,
-    execute as execute_group_command, execute_intent as execute_group_intent, required_consents,
-};
 pub use policy::{SettingsPolicy, project as project_group_policy};
 /// A bounded locally rechecked page; original owner types carry its evidence.
 pub struct Page {
