@@ -71,8 +71,12 @@ export CCID_SOURCE_REVISION="$CI_COMMIT_SHA"
 "$CCID_BIN" render --repo "$PWD" --check
 export ARTIFACT_ROOT="${ARTIFACT_ROOT:-$state/release-artifacts}"
 mkdir -p "$ARTIFACT_ROOT"
-if [ "$CHECKS" = "resolve-dependencies" ] || [ "$CHECKS" = "native" ]; then
+if [ "$CHECKS" = "resolve-dependencies" ]; then
   exec "$CCID_BIN" check --repo "$PWD" --check "$CHECKS"
+fi
+if [ "$CHECKS" = "native" ]; then
+  # The test servers link OpenSSL; run inside the pinned shell that provides it.
+  exec env NIX_BUILD_SHELL=bash nix-shell .ci/check-shell.nix --run 'exec "$CCID_BIN" check --repo "$PWD" --check native'
 fi
 proto --version
 moon --version
