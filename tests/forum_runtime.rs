@@ -246,7 +246,19 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
             origins: vec![ORIGIN.into()],
             body_bytes: 1_048_576,
             concurrent: 4,
+            anonymous_concurrent: 2,
             body_timeout: Duration::from_secs(5),
+            request_timeout: Duration::from_secs(5),
+            source: http::Bucket {
+                burst: 1_000,
+                replenish: Duration::from_millis(1),
+                keys: 16,
+            },
+            session: http::Bucket {
+                burst: 1_000,
+                replenish: Duration::from_millis(1),
+                keys: 16,
+            },
         },
         handle.clone(),
     )
