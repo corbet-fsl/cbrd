@@ -222,58 +222,8 @@ impl Member {
             blocked,
         )
     }
-    fn trace(&self, edit: &Edit) {
-        let read = self.read();
-        let custody = self.custody();
-        let policy = || {
-            read.charter
-                .admission_policy(ACTION, NOW, 300)
-                .expect("policy")
-        };
-        let schema = read.charter.publication(cchr::Kind::Schema).signed_bytes();
-        let previous = cpfl::load_current_committed(
-            read.store,
-            read.binding,
-            cpfl::Validation {
-                policy: policy(),
-                signed_schema: schema,
-                contact: &clean,
-            },
-        )
-        .expect("load");
-        assert!(previous.is_none());
-        let mut draft = cpfl::Draft::new(self.name.clone(), edit.profile.clone()).expect("new");
-        draft.set_rules(edit.rules.clone()).expect("rules");
-        draft
-            .prepare_publication(
-                &self.credential,
-                &policy(),
-                schema,
-                1,
-                1,
-                vec![1],
-                read.store.version().expect("version"),
-                &mut Device(self.device.clone()),
-                &custody,
-                &cpfl::PortableCodec,
-                &clean,
-            )
-            .map(|_| ())
-            .expect("prepare");
-    }
     async fn publish(&mut self, board: &Board<Offline>, edit: Edit, blocked: &[String]) -> u64 {
-        let traced = Edit {
-            profile: edit.profile.clone(),
-            rules: edit.rules.clone(),
-            reachability: edit.reachability.clone(),
-        };
-        let candidate = match self.prepare(board, edit, blocked) {
-            Ok(candidate) => candidate,
-            Err(error) => {
-                self.trace(&traced);
-                panic!("prepare refused: {error:?}");
-            }
-        };
+        let candidate = self.prepare(board, edit, blocked).unwrap();
         let operation = self.operation();
         let current = self.current;
         let policy = current.admission_policy(ACTION, NOW, 300).unwrap();
