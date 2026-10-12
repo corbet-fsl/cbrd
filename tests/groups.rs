@@ -376,3 +376,64 @@ fn the_authority_adapter_checks_expiry_and_leaves_parent_imports_refused() {
     );
     assert_eq!(cbrd::CONSENT_SECONDS, 3_600);
 }
+
+#[test]
+fn an_intent_always_names_the_local_member() {
+    use cbrd::GroupIntent;
+    let join = GroupIntent::Join {
+        group: [1; 32],
+        vouches: BTreeSet::new(),
+    };
+    assert_eq!(
+        join.clone().command("m7"),
+        Command::Join {
+            group: [1; 32],
+            member: "m7".into(),
+            vouches: BTreeSet::new()
+        }
+    );
+    let others = [
+        GroupIntent::Create {
+            id: [2; 32],
+            members: names(0, 3),
+            seed: false,
+        },
+        GroupIntent::Fork {
+            id: [3; 32],
+            parents: vec![[2; 32]],
+            members: names(0, 3),
+            kind: cgrp::ForkKind::Split,
+        },
+        GroupIntent::Leave { group: [2; 32] },
+        GroupIntent::Describe {
+            group: [2; 32],
+            name: "n".into(),
+            description: "d".into(),
+        },
+    ];
+    for intent in others {
+        let json = serde_json::to_string(&intent).unwrap();
+        assert_eq!(serde_json::from_str::<GroupIntent>(&json).unwrap(), intent);
+        assert!(!matches!(intent.command("m7"), Command::Join { .. }));
+    }
+    assert!(
+        serde_json::from_str::<GroupIntent>(r#"{"intent":"leave","group":[],"member":"x"}"#)
+            .is_err()
+    );
+    // Executing an intent acts as the owner's member.
+    let mut owner = Owner::new("m0", false, names(0, 3));
+    let create = GroupIntent::Create {
+        id: [1; 32],
+        members: names(0, 3),
+        seed: false,
+    };
+    futures_executor::block_on(cbrd::execute_group_intent(
+        &mut owner,
+        &PolicyAt::new(COMMUNITY, policy()),
+        create,
+        false,
+        128,
+    ))
+    .unwrap();
+    assert!(owner.snapshot.members(&[1; 32]).is_ok());
+}

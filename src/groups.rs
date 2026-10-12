@@ -5,6 +5,8 @@ use cgrp::{
     Authority, Candidate, Command, CommittedEffect, Consent, GroupView, Id, Policy, PolicySource,
     Request, Snapshot,
 };
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::future::Future;
 use std::pin::Pin;
@@ -172,4 +174,80 @@ pub async fn execute<O: GroupOwner + ?Sized>(
     )?;
     let (committed, effects) = owner.publish(candidate, now).await?;
     Ok((committed.views(&current, now)?, effects))
+}
+
+/// What the member asks for. The local member is never named by the caller;
+/// the owner supplies it, so nobody can act or consent for someone else.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "intent", rename_all = "snake_case", deny_unknown_fields)]
+pub enum Intent {
+    Create {
+        id: Id,
+        members: BTreeSet<String>,
+        seed: bool,
+    },
+    Fork {
+        id: Id,
+        parents: Vec<Id>,
+        members: BTreeSet<String>,
+        kind: cgrp::ForkKind,
+    },
+    Join {
+        group: Id,
+        vouches: BTreeSet<String>,
+    },
+    Leave {
+        group: Id,
+    },
+    Describe {
+        group: Id,
+        name: String,
+        description: String,
+    },
+}
+
+impl Intent {
+    pub fn command(self, member: &str) -> Command {
+        match self {
+            Self::Create { id, members, seed } => Command::Create { id, members, seed },
+            Self::Fork {
+                id,
+                parents,
+                members,
+                kind,
+            } => Command::Fork {
+                id,
+                parents,
+                members,
+                kind,
+            },
+            Self::Join { group, vouches } => Command::Join {
+                group,
+                member: member.to_owned(),
+                vouches,
+            },
+            Self::Leave { group } => Command::Leave { group },
+            Self::Describe {
+                group,
+                name,
+                description,
+            } => Command::Describe {
+                group,
+                name,
+                description,
+            },
+        }
+    }
+}
+
+/// `execute` for an intent of the local member.
+pub async fn execute_intent<O: GroupOwner + ?Sized>(
+    owner: &mut O,
+    policy: &(impl PolicySource + ?Sized),
+    intent: Intent,
+    visible: bool,
+    max_groups: usize,
+) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
+    let command = intent.command(&owner.member()?);
+    execute(owner, policy, command, visible, max_groups).await
 }
