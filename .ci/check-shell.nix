@@ -7,4 +7,7 @@ pkgs.mkShell {
   buildInputs = with pkgs; [ openssl ];
   nativeBuildInputs = with pkgs; [ pkg-config clang llvmPackages.libclang ];
   LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+  shellHook = ''
+    export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.openssl ]}:''${LD_LIBRARY_PATH:-}";
+  '';
 }
