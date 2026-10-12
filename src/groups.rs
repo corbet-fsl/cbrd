@@ -165,8 +165,8 @@ pub async fn execute<O: GroupOwner + ?Sized>(
     let candidate = cgrp::prepare(
         &snapshot,
         &request,
-        policy,
-        owner.authority(),
+        &Port(policy),
+        &Port(owner.authority()),
         now,
         max_groups,
     )?;
