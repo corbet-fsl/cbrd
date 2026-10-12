@@ -87,6 +87,34 @@ impl PolicySource for PolicyAt {
     }
 }
 
+/// Sized view of an unsized port, so the object-safe owner can feed Groups.
+struct Port<'a, T: ?Sized>(&'a T);
+impl<T: PolicySource + ?Sized> PolicySource for Port<'_, T> {
+    fn current(&self, community: &str, now: u64) -> Result<Policy> {
+        self.0.current(community, now)
+    }
+}
+impl<T: Authority + ?Sized> Authority for Port<'_, T> {
+    fn consent(&self, consent: &Consent, now: u64) -> Result<()> {
+        self.0.consent(consent, now)
+    }
+    fn contact(&self, community: &str, member: &str, contact: &str, now: u64) -> Result<()> {
+        self.0.contact(community, member, contact, now)
+    }
+    fn seed(&self, community: &str, group: &Id, now: u64) -> Result<()> {
+        self.0.seed(community, group, now)
+    }
+    fn parent(
+        &self,
+        state: &cgrp::GroupState,
+        request: &Request,
+        policy: &Policy,
+        now: u64,
+    ) -> Result<()> {
+        self.0.parent(state, request, policy, now)
+    }
+}
+
 /// Build, sign, prepare and publish one group command as the local member.
 /// `visible` is the semipublic consent: every signer states that members of the
 /// group may see their private profile. Rooms (opening and public) refuse a
