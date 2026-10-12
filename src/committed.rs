@@ -122,7 +122,7 @@ impl<T: clnk::Transport, R> Board<T, R> {
         cgrp::PolicySource::current(&source, &self.community, now).map_err(|_| Error::Rejected)
     }
 
-    fn with_committed<B: cwst::backend::Backend, O>(
+    pub(crate) fn with_committed<B: cwst::backend::Backend, O>(
         &mut self,
         context: &ReadContext<'_, B>,
         read: impl FnOnce(&mut Self, Input<'_>, &crate::Verification<'_>) -> Result<O, Error>,
