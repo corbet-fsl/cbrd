@@ -8,6 +8,7 @@ mod groups;
 mod policy;
 mod profile;
 pub use authority::{BoardAuthority, Contacts, Devices, Seeds};
+pub use cgrd;
 pub use cgrp::{self, GroupView};
 pub use clnk::{self, Challenge, Prepared, cfrm};
 pub use committed::{ReadContext, ReadPolicy};
@@ -23,6 +24,7 @@ pub use groups::{
 };
 pub use policy::{SettingsPolicy, project as project_group_policy};
 pub use profile::{Edit, PublishContext, block_rules, commit_profile};
+pub use {cnvl, cpfl, cshm};
 /// A bounded locally rechecked page; original owner types carry its evidence.
 pub struct Page {
     pub pairs: Vec<csrh::CheckedPair>,

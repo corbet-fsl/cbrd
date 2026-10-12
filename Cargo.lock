@@ -1137,7 +1137,7 @@ dependencies = [
 [[package]]
 name = "cpfl"
 version = "0.0.0"
-source = "git+https://git.corbet.ch/corbet-foss/cpfl.git?branch=v01#bfa57ff14395b9d156f0522ed8eefd80e65b32b6"
+source = "git+https://git.corbet.ch/corbet-foss/cpfl.git?branch=v01#e611e24935c8d5754127b21a1f3d19f6104b5110"
 dependencies = [
  "blake3",
  "cgrd",

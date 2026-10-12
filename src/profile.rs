@@ -25,8 +25,10 @@ pub struct Edit {
 pub struct PublishContext<'a, B: cwst::backend::Backend> {
     pub read: &'a ReadContext<'a, B>,
     pub custody: &'a cnvl::Custodian<'a>,
-    /// The issuer-signed community credential that binds this member's device.
-    pub credential: &'a [u8],
+    /// A freshly issued community credential (first publication, or after a
+    /// restricted-field change). `None` re-uses the credential inside the
+    /// committed publication, so ordinary edits need no new admission.
+    pub credential: Option<&'a [u8]>,
 }
 
 /// Block rules for the members Contacts currently blocks, deduplicated. Blocks
@@ -43,6 +45,36 @@ pub fn block_rules(blocked: &[String]) -> Vec<cgrd::Rule> {
 }
 
 impl<T: clnk::Transport, R> Board<T, R> {
+    /// Check a prepared candidate against the CURRENT policy, synchronously, in
+    /// the same borrowed-trust callback that prepared it. The result holds no
+    /// policy borrow, so the owner can await the durable write afterwards.
+    pub fn authorize_profile<B: cwst::backend::Backend>(
+        &self,
+        read: &ReadContext<'_, B>,
+        candidate: Candidate,
+    ) -> Result<cpfl::Authorized, Error> {
+        if read.binding.community() != self.community || read.charter.community() != self.community
+        {
+            return Err(Error::Scope);
+        }
+        let now = self.link.now_ms().map_err(|_| Error::Unavailable)? / 1000;
+        let policy = read
+            .charter
+            .admission_policy(
+                read.policy.admission_action,
+                now,
+                read.policy.maximum_snapshot_age,
+            )
+            .map_err(|_| Error::Rejected)?;
+        candidate
+            .authorize(cpfl::Validation {
+                policy,
+                signed_schema: read.charter.publication(cchr::Kind::Schema).signed_bytes(),
+                contact: read.contact,
+            })
+            .map_err(|_| Error::Rejected)
+    }
+
     /// Prepare the next publication: one new revision, a fresh profile key sealed
     /// by Envelope, both projections signed by the credential-authorized device
     /// and re-admitted by Guard before anything is returned. Nothing is stored or
@@ -104,6 +136,22 @@ impl<T: clnk::Transport, R> Board<T, R> {
             ),
             None => (1, read.store.version().map_err(|_| Error::Unavailable)?),
         };
+        let previous_credential = match &previous {
+            Some(committed) => Some(
+                serde_json::from_slice::<cgrd::Bundle>(&committed.publication().public_bundle)
+                    .ok()
+                    .and_then(|bundle| {
+                        serde_json::from_slice::<cgrd::BundleContent>(&bundle.payload).ok()
+                    })
+                    .map(|content| content.credential)
+                    .ok_or(Error::Rejected)?,
+            ),
+            None => None,
+        };
+        let credential = context
+            .credential
+            .or(previous_credential.as_deref())
+            .ok_or(Error::Unavailable)?;
         let mut draft = match read
             .store
             .read("profile", b"draft")
@@ -122,7 +170,7 @@ impl<T: clnk::Transport, R> Board<T, R> {
         // generation tracks the revision.
         draft
             .prepare_publication(
-                context.credential,
+                credential,
                 &policy()?,
                 signed_schema,
                 revision,
@@ -138,17 +186,16 @@ impl<T: clnk::Transport, R> Board<T, R> {
     }
 }
 
-/// Commit a prepared candidate with the Vault's writable Store. Profile checks
-/// the revision, the current admission and the Store version again; a failed or
-/// uncertain write returns no publication, so reopen and reconcile before retry.
+/// Persist an authorized candidate with the Vault's writable Store. The Store
+/// version fence applies; a failed or uncertain write returns no publication, so
+/// reopen and reconcile before retry.
 pub async fn commit_profile<B: cwst::backend::Backend>(
-    candidate: Candidate,
+    authorized: cpfl::Authorized,
     store: &mut cwst::Store<B>,
-    current: cpfl::Validation<'_>,
     operation: [u8; 32],
 ) -> Result<u64, Error> {
-    candidate
-        .commit_publication(store, current, operation, vec![])
+    authorized
+        .commit(store, operation, vec![])
         .await
         .map_err(|_| Error::Rejected)
 }

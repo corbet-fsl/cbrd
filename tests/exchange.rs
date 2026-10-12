@@ -215,7 +215,17 @@ impl Member {
             &PublishContext {
                 read: &read,
                 custody: &custody,
-                credential: &self.credential,
+                // Later revisions re-use the credential inside the committed one.
+                credential: if self
+                    .store
+                    .read("profile", b"publication")
+                    .unwrap()
+                    .is_some()
+                {
+                    None
+                } else {
+                    Some(&self.credential)
+                },
             },
             &mut Device(self.device.clone()),
             edit,
@@ -225,20 +235,10 @@ impl Member {
     async fn publish(&mut self, board: &Board<Offline>, edit: Edit, blocked: &[String]) -> u64 {
         let candidate = self.prepare(board, edit, blocked).unwrap();
         let operation = self.operation();
-        let current = self.current;
-        let policy = current.admission_policy(ACTION, NOW, 300).unwrap();
-        commit_profile(
-            candidate,
-            &mut self.store,
-            cpfl::Validation {
-                policy,
-                signed_schema: current.publication(cchr::Kind::Schema).signed_bytes(),
-                contact: &clean,
-            },
-            operation,
-        )
-        .await
-        .unwrap()
+        let authorized = board.authorize_profile(&self.read(), candidate).unwrap();
+        commit_profile(authorized, &mut self.store, operation)
+            .await
+            .unwrap()
     }
     fn publication(&self) -> Vec<u8> {
         self.store
