@@ -249,12 +249,12 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
             anonymous_concurrent: 2,
             body_timeout: Duration::from_secs(5),
             request_timeout: Duration::from_secs(5),
-            source: http::Bucket {
+            source: cfrm::bucket::Bucket {
                 burst: 1_000,
                 replenish: Duration::from_millis(1),
                 keys: 16,
             },
-            session: http::Bucket {
+            session: cfrm::bucket::Bucket {
                 burst: 1_000,
                 replenish: Duration::from_millis(1),
                 keys: 16,
