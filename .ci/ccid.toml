@@ -27,12 +27,36 @@ commands = [["bash", ".ci/verify.sh"]]
 cache_tools = [["rustc", "-vV"], ["cargo", "--version"], ["rustup", "run", "nightly", "rustc", "-vV"], ["rustup", "run", "nightly", "cargo", "llvm-cov", "--version"], ["python3", "--version"], ["python3", "-c", "import selenium; print(selenium.__version__)"], ["wasm-pack", "--version"], ["clang", "--version"], ["curl", "--version"], ["chromedriver", "--version"], ["chromium", "--version"]]
 cache_outputs = ["coverage.json", "coverage.lcov", "coverage.txt", "wasm-coverage.json", "wasm-coverage.lcov", "wasm-coverage.txt", "binding-version.txt"]
 
+[checks.native]
+kind = "commands"
+commands = [["bash", ".ci/native.sh"]]
+cache_tools = [["rustc", "-vV"], ["cargo", "--version"]]
+cache_outputs = ["dependency-metadata.json"]
+
+[checks.resolve-dependencies]
+kind = "commands"
+commands = [["bash", ".ci/resolve-dependencies.sh"]]
+cache = false
+cache_outputs = ["Cargo.lock"]
+
 [render]
-tool_revision = "53c129c2efa3b9279d2ecbc237d15acdfb656d8c"
+tool_revision = "e38f347d6941aa105ac4b55a0d4b8fec2ef22433"
 
 [jobs.verify]
 scheduler = "crow"
 checks = ["verify"]
+workflow = "repository-jobs"
+command = ["bash", ".ci/run-cached.sh"]
+
+[jobs.native]
+scheduler = "crow"
+checks = ["native"]
+workflow = "repository-jobs"
+command = ["bash", ".ci/run-cached.sh"]
+
+[jobs.resolve-dependencies]
+scheduler = "crow"
+checks = ["resolve-dependencies"]
 workflow = "repository-jobs"
 command = ["bash", ".ci/run-cached.sh"]
 
