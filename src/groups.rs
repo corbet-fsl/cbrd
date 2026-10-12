@@ -2,7 +2,8 @@
 //! decide, and hands the prepared candidate to the owner's durable transaction.
 //! Membership is decided only by `cgrp::prepare`; nothing here grants authority.
 use cgrp::{
-    Authority, Candidate, Command, CommittedEffect, Consent, Id, PolicySource, Request, Snapshot,
+    Authority, Candidate, Command, CommittedEffect, Consent, GroupView, Id, Policy, PolicySource,
+    Request, Snapshot,
 };
 use std::collections::BTreeSet;
 use std::future::Future;
@@ -26,6 +27,10 @@ pub struct Signed {
 /// transaction (Threads). A peer's consent is available only when the peer
 /// answered an invitation; otherwise `sign_consent` refuses.
 pub trait GroupOwner {
+    /// The local member string as it appears in group rosters.
+    fn member(&mut self) -> Result<String>;
+    /// Current Guard/device/contact/standing-room authority for this device.
+    fn authority(&self) -> &dyn Authority;
     /// Wall-clock seconds.
     fn now(&mut self) -> Result<u64>;
     /// A fresh operation identifier, never reused.
@@ -58,36 +63,60 @@ pub fn required_consents(command: &Command, actor: &str) -> BTreeSet<String> {
     }
 }
 
-/// Build, sign, prepare and publish one group command. `visible` is the
-/// semipublic consent: every signer states that members of the group may see
-/// their private profile. Rooms (opening and public) refuse a command without it.
-pub async fn execute<O: GroupOwner>(
+/// A policy already verified from the signed Rulebook for one moment: Groups
+/// re-validates it at the given time, so it grants nothing beyond its expiry.
+pub struct PolicyAt {
+    community: String,
+    policy: Policy,
+}
+impl PolicyAt {
+    pub fn new(community: &str, policy: Policy) -> Self {
+        Self {
+            community: community.to_owned(),
+            policy,
+        }
+    }
+}
+impl PolicySource for PolicyAt {
+    fn current(&self, community: &str, now: u64) -> Result<Policy> {
+        if community != self.community {
+            return Err(cgrp::Error::Authority);
+        }
+        self.policy.validate(now)?;
+        Ok(self.policy.clone())
+    }
+}
+
+/// Build, sign, prepare and publish one group command as the local member.
+/// `visible` is the semipublic consent: every signer states that members of the
+/// group may see their private profile. Rooms (opening and public) refuse a
+/// command without it.
+pub async fn execute<O: GroupOwner + ?Sized>(
     owner: &mut O,
-    policy: &impl PolicySource,
-    authority: &impl Authority,
+    policy: &(impl PolicySource + ?Sized),
     command: Command,
-    actor: &str,
     visible: bool,
     max_groups: usize,
-) -> Result<(Snapshot, Vec<CommittedEffect>)> {
+) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
+    let actor = owner.member()?;
     let now = owner.now()?;
     let snapshot = owner.snapshot().await?;
-    let epoch = policy.current(snapshot.community(), now)?.epoch;
+    let current = policy.current(snapshot.community(), now)?;
     let mut request = Request {
         operation: owner.operation()?,
         parents: snapshot.parent_references(&command)?,
         effective_at: now,
-        actor: actor.to_owned(),
+        actor: actor.clone(),
         command,
         consents: vec![],
     };
     let digest = request.command_digest()?;
-    for member in required_consents(&request.command, actor) {
+    for member in required_consents(&request.command, &actor) {
         let mut consent = Consent {
             community: snapshot.community().to_owned(),
             member,
             operation: request.operation,
-            policy_epoch: epoch,
+            policy_epoch: current.epoch,
             command_digest: digest,
             profile_visibility: visible,
             valid_until: now.saturating_add(CONSENT_SECONDS),
@@ -105,6 +134,14 @@ pub async fn execute<O: GroupOwner>(
         consent.authority = signed.authority;
         request.consents.push(consent);
     }
-    let candidate = cgrp::prepare(&snapshot, &request, policy, authority, now, max_groups)?;
-    owner.publish(candidate, now).await
+    let candidate = cgrp::prepare(
+        &snapshot,
+        &request,
+        policy,
+        owner.authority(),
+        now,
+        max_groups,
+    )?;
+    let (committed, effects) = owner.publish(candidate, now).await?;
+    Ok((committed.views(&current, now)?, effects))
 }

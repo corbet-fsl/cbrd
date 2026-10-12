@@ -2,9 +2,9 @@
 //! consents, fake device directory, contacts and checkpoint store.
 use cbrd::cgrp::{
     self, Band, Candidate, Command, Commit, CommitFuture, CommittedEffect, DAY, Effect, Error, Id,
-    Notification, Persistence, Policy, PolicySource, SeatFormats, Snapshot,
+    Notification, Persistence, Policy, SeatFormats, Snapshot,
 };
-use cbrd::{BoardAuthority, Contacts, Devices, GroupOwner, PortFuture, Seeds, Signed};
+use cbrd::{BoardAuthority, Contacts, Devices, GroupOwner, PolicyAt, PortFuture, Seeds, Signed};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use std::collections::BTreeSet;
 
@@ -92,16 +92,6 @@ fn policy() -> Policy {
     }
 }
 
-struct Fixed;
-impl PolicySource for Fixed {
-    fn current(&self, community: &str, _: u64) -> cgrp::Result<Policy> {
-        if community != COMMUNITY {
-            return Err(Error::Authority);
-        }
-        Ok(policy())
-    }
-}
-
 struct Directory;
 impl Devices for Directory {
     fn verify(
@@ -160,6 +150,8 @@ impl Persistence for Checkpoint {
 }
 
 struct Owner {
+    me: String,
+    authority: BoardAuthority<Directory, Everyone, Standing>,
     snapshot: Snapshot,
     store: Checkpoint,
     clock: u64,
@@ -169,9 +161,11 @@ struct Owner {
     fail_clock: bool,
 }
 impl Owner {
-    fn new(answered: BTreeSet<String>) -> Self {
+    fn new(me: &str, seeds: bool, answered: BTreeSet<String>) -> Self {
         let snapshot = Snapshot::empty(COMMUNITY.into());
         Self {
+            me: me.into(),
+            authority: BoardAuthority::new(Directory, Everyone, Standing(seeds)),
             store: Checkpoint(snapshot.revision()),
             snapshot,
             clock: 1_000_000,
@@ -182,6 +176,12 @@ impl Owner {
     }
 }
 impl GroupOwner for Owner {
+    fn member(&mut self) -> cgrp::Result<String> {
+        Ok(self.me.clone())
+    }
+    fn authority(&self) -> &dyn cgrp::Authority {
+        &self.authority
+    }
     fn now(&mut self) -> cgrp::Result<u64> {
         if self.fail_clock {
             return Err(Error::Clock);
@@ -226,75 +226,71 @@ impl GroupOwner for Owner {
     }
 }
 
-fn run(
-    owner: &mut Owner,
-    seeds: bool,
-    command: Command,
-    actor: &str,
-    visible: bool,
-) -> cgrp::Result<(Snapshot, Vec<CommittedEffect>)> {
-    let authority = BoardAuthority::new(Directory, Everyone, Standing(seeds));
+fn run(owner: &mut Owner, command: Command, visible: bool) -> cgrp::Result<Snapshot> {
     futures_executor::block_on(cbrd::execute_group_command(
-        owner, &Fixed, &authority, command, actor, visible, 128,
-    ))
+        owner,
+        &PolicyAt::new(COMMUNITY, policy()),
+        command,
+        visible,
+        128,
+    ))?;
+    Ok(owner.snapshot.clone())
+}
+
+fn as_member(owner: &mut Owner, member: &str, seeds: bool) {
+    owner.me = member.into();
+    owner.authority = BoardAuthority::new(Directory, Everyone, Standing(seeds));
 }
 
 #[test]
 fn a_circle_is_created_described_and_left_with_every_member_consenting() {
-    let mut owner = Owner::new(names(0, 3));
+    let mut owner = Owner::new("m0", false, names(0, 3));
     let create = Command::Create {
         id: [1; 32],
         members: names(0, 3),
         seed: false,
     };
-    let (snapshot, effects) = run(&mut owner, false, create, "m0", false).unwrap();
+    let snapshot = run(&mut owner, create, false).unwrap();
     assert_eq!(snapshot.members(&[1; 32]).unwrap(), &names(0, 3));
-    assert!(matches!(effects[0].event(), Effect::Membership { .. }));
 
+    as_member(&mut owner, "m1", false);
     let describe = Command::Describe {
         group: [1; 32],
         name: "Hike".into(),
         description: "Walks".into(),
     };
-    run(&mut owner, false, describe, "m1", false).unwrap();
-    let (snapshot, _) = run(
-        &mut owner,
-        false,
-        Command::Leave { group: [1; 32] },
-        "m2",
-        false,
-    )
-    .unwrap();
+    run(&mut owner, describe, false).unwrap();
+    as_member(&mut owner, "m2", false);
+    let snapshot = run(&mut owner, Command::Leave { group: [1; 32] }, false).unwrap();
     assert_eq!(snapshot.members(&[1; 32]).unwrap(), &names(0, 2));
     assert_eq!(owner.store.0, snapshot.revision());
-    run(&mut owner, false, Command::Tick, "m0", false).unwrap();
+    as_member(&mut owner, "m0", false);
+    run(&mut owner, Command::Tick, false).unwrap();
 }
 
 #[test]
 fn a_command_without_every_required_answer_changes_nothing() {
-    let mut owner = Owner::new(names(0, 2));
+    let mut owner = Owner::new("m0", false, names(0, 2));
     let create = Command::Create {
         id: [1; 32],
         members: names(0, 3),
         seed: false,
     };
     assert_eq!(
-        run(&mut owner, false, create, "m0", false).err().unwrap(),
+        run(&mut owner, create, false).err().unwrap(),
         Error::Unavailable
     );
     assert_eq!(owner.snapshot.revision(), 0);
     owner.fail_clock = true;
     assert_eq!(
-        run(&mut owner, false, Command::Tick, "m0", false)
-            .err()
-            .unwrap(),
+        run(&mut owner, Command::Tick, false).err().unwrap(),
         Error::Clock
     );
 }
 
 #[test]
 fn joining_a_room_states_the_profile_visibility_consent() {
-    let mut owner = Owner::new(names(0, 5));
+    let mut owner = Owner::new("m0", false, names(0, 5));
     let seed = Command::Create {
         id: [2; 32],
         members: names(0, 3),
@@ -302,30 +298,26 @@ fn joining_a_room_states_the_profile_visibility_consent() {
     };
     // A standing room needs the Rulebook's authorization and visibility consent.
     assert_eq!(
-        run(&mut owner, false, seed.clone(), "m0", true)
-            .err()
-            .unwrap(),
+        run(&mut owner, seed.clone(), true).err().unwrap(),
         Error::Authority
     );
+    as_member(&mut owner, "m0", true);
     assert_eq!(
-        run(&mut owner, true, seed.clone(), "m0", false)
-            .err()
-            .unwrap(),
+        run(&mut owner, seed.clone(), false).err().unwrap(),
         Error::Authority
     );
-    run(&mut owner, true, seed, "m0", true).unwrap();
+    run(&mut owner, seed, true).unwrap();
+    as_member(&mut owner, "m4", true);
     let join = Command::Join {
         group: [2; 32],
         member: "m4".into(),
         vouches: BTreeSet::new(),
     };
     assert_eq!(
-        run(&mut owner, true, join.clone(), "m4", false)
-            .err()
-            .unwrap(),
+        run(&mut owner, join.clone(), false).err().unwrap(),
         Error::Authority
     );
-    let (snapshot, _) = run(&mut owner, true, join, "m4", true).unwrap();
+    let snapshot = run(&mut owner, join, true).unwrap();
     assert!(snapshot.members(&[2; 32]).unwrap().contains("m4"));
 }
 

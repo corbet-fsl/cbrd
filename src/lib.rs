@@ -12,7 +12,7 @@ pub use committed::{ReadContext, ReadPolicy};
 pub use crbk;
 pub use csrh::{Discovery, Input, Verification, ViewLimits};
 pub use groups::{
-    CONSENT_SECONDS, GroupOwner, PortFuture, Signed, execute as execute_group_command,
+    CONSENT_SECONDS, GroupOwner, PolicyAt, PortFuture, Signed, execute as execute_group_command,
     required_consents,
 };
 pub use policy::{SettingsPolicy, project as project_group_policy};
