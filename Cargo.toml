@@ -25,6 +25,7 @@ cnvl = { git = "https://git.corbet.ch/corbet-foss/cnvl.git", branch = "v01" }
 crbk = { git = "https://git.corbet.ch/corbet-foss/crbk", branch = "main", default-features = false }
 cgrd = { git = "https://git.corbet.ch/corbet-foss/cgrd", branch = "main", default-features = false }
 cshm = { git = "https://git.corbet.ch/corbet-foss/cshm", branch = "main" }
+blake3 = "1"
 serde = { version = "1", features = ["derive"] }
 schemars = "1"
 serde_json = "1"
