@@ -127,7 +127,31 @@ impl<T: clnk::Transport, R> Board<T, R> {
         context: &ReadContext<'_, B>,
         read: impl FnOnce(&mut Self, Input<'_>, &crate::Verification<'_>) -> Result<O, Error>,
     ) -> Result<O, Error> {
-        let result = (|| {
+        let result = self.committed(context, true, read);
+        if result.is_err() {
+            self.clear_view();
+        }
+        result
+    }
+
+    /// The same current owners, for peer-to-peer work that needs no live Forum
+    /// attendance: the committed own publication is read and verified anew, but
+    /// the Link need not have entered with it, and no displayed page is cleared.
+    pub(crate) fn with_committed_local<B: cwst::backend::Backend, O>(
+        &mut self,
+        context: &ReadContext<'_, B>,
+        read: impl FnOnce(&mut Self, Input<'_>, &crate::Verification<'_>) -> Result<O, Error>,
+    ) -> Result<O, Error> {
+        self.committed(context, false, read)
+    }
+
+    fn committed<B: cwst::backend::Backend, O>(
+        &mut self,
+        context: &ReadContext<'_, B>,
+        attended: bool,
+        read: impl FnOnce(&mut Self, Input<'_>, &crate::Verification<'_>) -> Result<O, Error>,
+    ) -> Result<O, Error> {
+        (|| {
             if context.binding.community() != self.community
                 || context.charter.community() != self.community
             {
@@ -179,12 +203,10 @@ impl<T: clnk::Transport, R> Board<T, R> {
             // Synchronous owner checks can also cross a clock boundary. Never
             // return the result with a policy evaluated in an earlier second.
             self.current_verification(&verification)?;
-            self.own_publication(own)?;
+            if attended {
+                self.own_publication(own)?;
+            }
             Ok(output)
-        })();
-        if result.is_err() {
-            self.clear_view();
-        }
-        result
+        })()
     }
 }

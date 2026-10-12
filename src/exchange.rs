@@ -169,7 +169,7 @@ impl<T: clnk::Transport, R> Board<T, R> {
         seconds: u64,
     ) -> Result<Request, Error> {
         let contact = |text: &str| (context.read.contact)(text);
-        self.with_committed(context.read, |_, own, verification| {
+        self.with_committed_local(context.read, |_, own, verification| {
             let now = verification.policy.policy.now;
             let pair =
                 csrh::recheck(own, peer, verification, &contact).map_err(|_| Error::Rejected)?;
@@ -212,7 +212,7 @@ impl<T: clnk::Transport, R> Board<T, R> {
         seen: &dyn Fn(&[u8; 32]) -> bool,
     ) -> Result<Answer, Error> {
         let contact = |text: &str| (context.read.contact)(text);
-        self.with_committed(context.read, |_, own, verification| {
+        self.with_committed_local(context.read, |_, own, verification| {
             let now = verification.policy.policy.now;
             if request.offer.len() > cxch::MAX_OFFER_BYTES {
                 return Err(Error::Rejected);
@@ -293,7 +293,7 @@ impl<T: clnk::Transport, R> Board<T, R> {
             Reply::Release { transfer, nonce } => (transfer, *nonce),
         };
         let contact = |text: &str| (context.read.contact)(text);
-        self.with_committed(context.read, |_, own, verification| {
+        self.with_committed_local(context.read, |_, own, verification| {
             let pair =
                 csrh::recheck(own, owner, verification, &contact).map_err(|_| Error::Rejected)?;
             // A key from a member our own rules exclude is never accepted.
@@ -353,7 +353,7 @@ impl<T: clnk::Transport, R> Board<T, R> {
         owner: Input<'_>,
     ) -> Result<cshm::Profile, Error> {
         let contact = |text: &str| (context.read.contact)(text);
-        self.with_committed(context.read, |_, own, verification| {
+        self.with_committed_local(context.read, |_, own, verification| {
             let pair =
                 csrh::recheck(own, owner, verification, &contact).map_err(|_| Error::Rejected)?;
             if !pair.decision().is_match() {
