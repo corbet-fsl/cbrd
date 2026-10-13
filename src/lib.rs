@@ -36,7 +36,10 @@ pub use groups::{
 };
 pub use policy::{SettingsPolicy, project as project_group_policy};
 pub use profile::{Edit, PublishContext, block_rules, commit_profile};
-pub use rooms::{JoinFrame, JoinsRead, Pause, RoomFeed, RoomJoinInput, RoomJoined, RoomOrdering};
+pub use rooms::{
+    JoinFrame, JoinsRead, Pause, RoomAdmitInput, RoomAdmitted, RoomCompanion, RoomFeed,
+    RoomJoinInput, RoomJoined, RoomOrdering,
+};
 pub use {cnvl, cpfl, cshm};
 /// A bounded locally rechecked page; original owner types carry its evidence.
 pub struct Page {
