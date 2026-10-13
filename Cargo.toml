@@ -4,31 +4,43 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 description = "Board for device-side community composition"
-repository = "https://github.com/corbet-libs/cbrd"
+repository = "https://git.corbet.ch/corbet-libs/cbrd.git"
 license-file = "LICENSE.md"
 
 [lib]
 crate-type = ["rlib"]
 
+[features]
+default = ["http"]
+http = ["clnk/http"]
+browser = ["clnk/browser"]
+ohttp = ["clnk/ohttp"]
+
 [dependencies]
-clnk = { git = "https://github.com/corbet-foss/clnk", branch = "main" }
-csrh = { git = "https://github.com/corbet-foss/csrh", branch = "main" }
-cxch = { git = "https://github.com/corbet-foss/cxch", branch = "main" }
-cgrp = { git = "https://github.com/corbet-foss/cgrp", branch = "main" }
-ctnd = { git = "https://github.com/corbet-foss/ctnd", branch = "main" }
-cnvl = { git = "https://github.com/corbet-foss/cnvl", branch = "main" }
-cshm = { git = "https://github.com/corbet-foss/cshm", branch = "main" }
+clnk = { git = "https://git.corbet.ch/corbet-foss/clnk.git", branch = "v01", default-features = false }
+csrh = { git = "https://git.corbet.ch/corbet-foss/csrh.git", branch = "v01" }
+cxch = { git = "https://git.corbet.ch/corbet-foss/cxch.git", branch = "v01" }
+cgrp = { git = "https://git.corbet.ch/corbet-foss/cgrp.git", branch = "v01" }
+ctnd = { git = "https://git.corbet.ch/corbet-foss/ctnd.git", branch = "v01" }
+cthr = { git = "https://git.corbet.ch/corbet-foss/cthr.git", branch = "v01" }
+cnvl = { git = "https://git.corbet.ch/corbet-foss/cnvl.git", branch = "v01" }
+crbk = { git = "https://git.corbet.ch/corbet-foss/crbk", branch = "main", default-features = false }
+cgrd = { git = "https://git.corbet.ch/corbet-foss/cgrd", branch = "main", default-features = false }
+cshm = { git = "https://git.corbet.ch/corbet-foss/cshm", branch = "main" }
+blake3 = "1"
 serde = { version = "1", features = ["derive"] }
 schemars = "1"
+serde_json = "1"
+hpke = { version = "0.14", default-features = false, features = ["alloc", "x25519", "chacha"] }
+
+cpfl = { git = "https://git.corbet.ch/corbet-foss/cpfl.git", branch = "v01" }
+ckmg = { git = "https://git.corbet.ch/corbet-foss/ckmg.git", branch = "v01" }
+cwst = { git = "https://git.corbet.ch/corbet-foss/cwst.git", branch = "v01" }
+cchr = { git = "https://git.corbet.ch/corbet-foss/cchr.git", branch = "v01" }
 
 [dev-dependencies]
-cpfl = { git = "https://github.com/corbet-foss/cpfl", branch = "main" }
-cgrd = { git = "https://github.com/corbet-foss/cgrd", branch = "main", default-features = false }
-ckmg = { git = "https://github.com/corbet-foss/ckmg", branch = "main" }
-cwst = { git = "https://github.com/corbet-foss/cwst", branch = "main" }
-csgn = { git = "https://github.com/corbet-foss/csgn", branch = "main", default-features = false, features = ["volatile-signer"] }
+csgn = { git = "https://git.corbet.ch/corbet-foss/csgn", branch = "main", default-features = false, features = ["volatile-signer"] }
 ed25519-dalek = { version = "3", default-features = false, features = ["fast"] }
-serde_json = "1"
 futures-executor = "0.3"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
@@ -37,3 +49,12 @@ wasm-bindgen-test = "0.3"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(owned_browser_coverage)"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+cfrm = { git = "https://git.corbet.ch/corbet-libs/cfrm.git", branch = "v01", features = ["server"] }
+cgth = { git = "https://git.corbet.ch/corbet-libs/cgth.git", branch = "v01" }
+csrn = { git = "https://git.corbet.ch/corbet-libs/csrn.git", branch = "v01" }
+cvtl = { git = "https://git.corbet.ch/corbet-libs/cvtl.git", branch = "v01" }
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+tower = { version = "0.5", features = ["util"] }
+tokio = { version = "1", features = ["rt", "time", "sync", "net", "macros"] }

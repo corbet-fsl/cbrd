@@ -13,6 +13,12 @@ Implemented: same-community composition and local validation/inspection, plus
 generated-client challenge forwarding. Pending: production current
 presence/discovery, Contacts block event plumbing, combined encrypted
 candidate/checkpoint, Groups lifecycle and Attend/Threads ordered room adapters.
+Board also forwards `inspect_transfer` to the original Exchange owner, consuming
+an Envelope Auth-mode capsule with the supplied current owner custody and exact
+publication pair. Exchange recreates the signed recipient capabilities and uses
+Envelope's existing nonce/publication binding. Board neither opens keys itself
+nor interprets successful inspection as a replay, transport or commit receipt.
+
 No external notice or key release occurs from local inspection; no fixture
 policy or ready status fills an absent capability. Profile/Contacts/Wallet keep
 their own custody, journals and authority. Link remains the sole Forum connection owner, with separate unlinkable
