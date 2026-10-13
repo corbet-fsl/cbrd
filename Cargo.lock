@@ -641,7 +641,7 @@ dependencies = [
 [[package]]
 name = "cblc"
 version = "0.0.0"
-source = "git+https://git.corbet.ch/corbet-libs/cblc?branch=main#a3a329b92bc8243295552c949ae5c7bd51bd2580"
+source = "git+https://git.corbet.ch/corbet-libs/cblc?branch=main#f249f9b11295b6db13d1bd227defb194755d77c5"
 dependencies = [
  "cbcn",
  "cmbl",
@@ -670,7 +670,7 @@ dependencies = [
 [[package]]
 name = "cblv"
 version = "0.1.0"
-source = "git+https://git.corbet.ch/corbet-foss/cblv.git?branch=main#80ccdc0b15685865af0d605ed3bcba67bf723c5d"
+source = "git+https://git.corbet.ch/corbet-foss/cblv.git?branch=main#1bb82eb44feb4d44fa74c74270c3f6b8b5dd09ab"
 dependencies = [
  "bhttp",
  "getrandom 0.3.4",
@@ -786,7 +786,7 @@ checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 [[package]]
 name = "cfrm"
 version = "0.2.0"
-source = "git+https://git.corbet.ch/corbet-libs/cfrm.git?branch=ohttp-on-18b6056#0681dd1d9d3d1b10ef008fdf148aba4838641aef"
+source = "git+https://git.corbet.ch/corbet-libs/cfrm.git?branch=v01#17dfd0993fa9b6bc71a34ce8595a85094dcd5af3"
 dependencies = [
  "axum",
  "cblv",
@@ -949,7 +949,7 @@ dependencies = [
 [[package]]
 name = "ckmg"
 version = "0.0.0"
-source = "git+https://git.corbet.ch/corbet-foss/ckmg.git?branch=v01#ca1423d1d29466fdadd5f54dbf9b9afe17d02dd1"
+source = "git+https://git.corbet.ch/corbet-foss/ckmg.git?branch=v01#e9383f85bdf1bdf7406ce19956e7b68431fca438"
 dependencies = [
  "blake3",
  "cdht",
@@ -1016,7 +1016,7 @@ dependencies = [
 [[package]]
 name = "clnk"
 version = "0.1.0"
-source = "git+https://git.corbet.ch/corbet-foss/clnk.git?branch=ohttp#787aac46f2d674130216f9203299d8a1d1031503"
+source = "git+https://git.corbet.ch/corbet-foss/clnk.git?branch=v01#b5bf410ae9f59752cc7a400df02f92499204017d"
 dependencies = [
  "cfrm",
  "cmbl",
