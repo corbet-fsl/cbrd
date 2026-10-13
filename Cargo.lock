@@ -686,7 +686,7 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 [[package]]
 name = "cbcn"
 version = "0.1.0"
-source = "git+https://git.corbet.ch/corbet-foss/cbcn?branch=main#3ff7de1ccd1744440049bc63f502a3e0e4be2a8e"
+source = "git+https://git.corbet.ch/corbet-foss/cbcn?branch=main#cc7df15f97aa380c08c34eefcc2c5b716046330f"
 dependencies = [
  "csgn",
  "serde",
@@ -787,9 +787,10 @@ dependencies = [
 [[package]]
 name = "cchr"
 version = "0.1.0"
-source = "git+https://git.corbet.ch/corbet-foss/cchr.git?branch=v01#0afb7792e62b8e556c7f9856c94802c03c4ca771"
+source = "git+https://git.corbet.ch/corbet-foss/cchr.git?branch=v01#f8d068f41bd70f1caedd3aa999731b8f77894b0c"
 dependencies = [
  "cbcn",
+ "cblv",
  "cgrd",
  "ckyh",
  "crbk",
@@ -1041,7 +1042,7 @@ dependencies = [
 [[package]]
 name = "ckmg"
 version = "0.0.0"
-source = "git+https://git.corbet.ch/corbet-foss/ckmg.git?branch=v01#db7cf5968ddd253596b73c9ce35bfad0da866f8e"
+source = "git+https://git.corbet.ch/corbet-foss/ckmg.git?branch=v01#15510d5b2ba0b5dee50a22bf77b9804c27ea32ae"
 dependencies = [
  "blake3",
  "cdht",
@@ -1166,7 +1167,7 @@ checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
 [[package]]
 name = "cnvl"
 version = "0.0.0"
-source = "git+https://git.corbet.ch/corbet-foss/cnvl.git?branch=v01#f873e8621ec4bcc4bcab5a5513a77728869ac196"
+source = "git+https://git.corbet.ch/corbet-foss/cnvl.git?branch=v01#8c1cae0b9a2b0837c6923c52cf833879e8cad036"
 dependencies = [
  "cgrd",
  "chacha20poly1305 0.11.0",
@@ -1378,7 +1379,7 @@ dependencies = [
 [[package]]
 name = "crbk"
 version = "0.0.0"
-source = "git+https://git.corbet.ch/corbet-foss/crbk?branch=main#6dfc391ba24c2894946a9e5424ce4ad3ed68f6fa"
+source = "git+https://git.corbet.ch/corbet-foss/crbk?branch=main#c3701ed4f9976ef13ea4039f8d298cfd1d294965"
 dependencies = [
  "semver",
  "serde",
@@ -1600,7 +1601,7 @@ dependencies = [
 [[package]]
 name = "cthr"
 version = "0.1.0"
-source = "git+https://git.corbet.ch/corbet-foss/cthr.git?branch=v01#c479cf7b13d8649b81a22eb3c35f7aa7422d1573"
+source = "git+https://git.corbet.ch/corbet-foss/cthr.git?branch=v01#82f604008ec8206839d3a76fbc2c16fa11bde6d0"
 dependencies = [
  "cchr",
  "cgrp",
@@ -1626,7 +1627,7 @@ dependencies = [
 [[package]]
 name = "ctnd"
 version = "0.1.0"
-source = "git+https://git.corbet.ch/corbet-foss/ctnd.git?branch=v01#dd5eed917533dbd7da44d280786cec19f7060cbc"
+source = "git+https://git.corbet.ch/corbet-foss/ctnd.git?branch=v01#fe939e796ca7d78d15a514e95d4378a3296b3948"
 dependencies = [
  "cgrp",
  "schemars",
