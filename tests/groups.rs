@@ -161,6 +161,8 @@ struct Owner {
     fail_clock: bool,
     /// Pretend to own an MLS store: key packages, Welcome and join.
     mls: bool,
+    held: std::collections::BTreeMap<String, Vec<u8>>,
+    provided: std::collections::BTreeMap<String, Vec<u8>>,
     packages_seen: Vec<Vec<u8>>,
     joined_with: Option<Vec<u8>>,
 }
@@ -177,12 +179,30 @@ impl Owner {
             answered,
             fail_clock: false,
             mls: false,
+            held: Default::default(),
+            provided: Default::default(),
             packages_seen: vec![],
             joined_with: None,
         }
     }
 }
 impl GroupOwner for Owner {
+    fn handles<'a>(
+        &'a mut self,
+        members: &'a BTreeSet<String>,
+    ) -> PortFuture<'a, std::collections::BTreeMap<String, Vec<u8>>> {
+        Box::pin(async move {
+            Ok(self
+                .held
+                .iter()
+                .filter(|(member, _)| members.contains(*member))
+                .map(|(member, handle)| (member.clone(), handle.clone()))
+                .collect())
+        })
+    }
+    fn provide_handles(&mut self, handles: std::collections::BTreeMap<String, Vec<u8>>) {
+        self.provided = handles;
+    }
     fn key_package<'a>(&'a mut self, group: Id, operation: Id) -> PortFuture<'a, Vec<u8>> {
         Box::pin(async move {
             if !self.mls {
@@ -718,4 +738,41 @@ fn a_swapped_key_package_breaks_the_consent_and_the_group_is_not_created() {
         .is_err()
     );
     assert!(m0.packages_seen.is_empty());
+}
+
+#[test]
+fn the_inviter_hands_out_locators_for_co_members_and_the_joiner_keeps_only_named_ones() {
+    let policy = PolicyAt::new(COMMUNITY, policy());
+    let mut m0 = Owner::new("m0", false, only("m0"));
+    let mut m1 = Owner::new("m1", false, only("m1"));
+    let mut m2 = Owner::new("m2", false, only("m2"));
+    for owner in [&mut m0, &mut m1, &mut m2] {
+        owner.mls = true;
+    }
+    m0.held.insert("m1".into(), b"handle-1".to_vec());
+    m0.held.insert("m2".into(), b"handle-2".to_vec());
+    m0.held.insert("stranger".into(), b"handle-x".to_vec());
+    let mut proposal = circle_proposal(&mut m0, 1, names(0, 3));
+    let text = proposal.invitation().to_text().unwrap();
+    let mut invitations = vec![];
+    for (from, owner) in [("m1", &mut m1), ("m2", &mut m2)] {
+        let invitation = invitation_for(owner, "m0", &text);
+        let reply = block(invitation.answer(owner, true, false)).unwrap();
+        proposal.admit(from, reply, 1_000_150).unwrap();
+        invitations.push(invitation);
+    }
+    let welcome = block(cbrd::commit_group_proposal(
+        &mut m0, &policy, &proposal, 128,
+    ))
+    .unwrap()
+    .welcome
+    .unwrap();
+    block(invitations[1].join(&mut m2, &policy, "m0", welcome, 128)).unwrap();
+    // m2 got the locator of m1 (a co-member), none for itself or a stranger.
+    assert_eq!(
+        m2.provided.get("m1").map(Vec::as_slice),
+        Some(&b"handle-1"[..])
+    );
+    assert!(!m2.provided.contains_key("m2"));
+    assert!(!m2.provided.contains_key("stranger"));
 }

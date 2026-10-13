@@ -15,19 +15,29 @@ use cgrp::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Wire version of [`Message`]; anything else is refused.
 pub const INVITE_VERSION: u8 = 1;
 /// Longest accepted clock lead of a request over the receiver's clock.
 const SKEW_SECONDS: u64 = 300;
+/// Bounds on the locators an invitation may carry.
+const MAX_HANDLE: usize = 512;
+const MAX_HANDLES: usize = 64;
 
 /// What travels as the text of a conversation message between two members.
 #[derive(Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Message {
     /// The exact request (without consents) the invitee may consent to.
-    Invite { version: u8, request: Request },
+    Invite {
+        version: u8,
+        request: Request,
+        /// The inviter's lineage-read handles for the other members (locators
+        /// only; they carry no trust).
+        #[serde(default)]
+        handles: BTreeMap<String, Vec<u8>>,
+    },
     /// One member's signed consent for exactly one request.
     Consent { version: u8, consent: Consent },
     /// The member refused; nothing is signed.
@@ -69,6 +79,8 @@ impl Message {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Proposal {
     request: Request,
+    #[serde(default)]
+    handles: BTreeMap<String, Vec<u8>>,
     epoch: u64,
     community: String,
     awaiting: BTreeSet<String>,
@@ -103,6 +115,7 @@ impl Proposal {
         Message::Invite {
             version: INVITE_VERSION,
             request,
+            handles: self.handles.clone(),
         }
     }
 
@@ -181,8 +194,14 @@ pub async fn propose<O: GroupOwner + ?Sized>(
         .await?;
         request.consents.push(consent);
     }
+    let others: BTreeSet<String> = command_members(&request.command)
+        .into_iter()
+        .filter(|member| member != &actor)
+        .collect();
+    let handles = owner.handles(&others).await?;
     Ok(Proposal {
         request,
+        handles,
         epoch: current.epoch,
         community: snapshot.community().to_owned(),
         awaiting,
@@ -245,6 +264,8 @@ pub async fn commit<O: GroupOwner + ?Sized>(
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Invitation {
     request: Request,
+    #[serde(default)]
+    handles: BTreeMap<String, Vec<u8>>,
     community: String,
     epoch: u64,
     member: String,
@@ -276,7 +297,10 @@ impl Invitation {
         from: &str,
         message: Message,
     ) -> Result<Self> {
-        let Message::Invite { request, .. } = message else {
+        let Message::Invite {
+            request, handles, ..
+        } = message
+        else {
             return Err(Error::Invalid);
         };
         let member = owner.member()?;
@@ -297,8 +321,20 @@ impl Invitation {
         owner
             .authority()
             .contact(snapshot.community(), &member, from, now)?;
+        // Only locators for named co-members, bounded; never for this member.
+        let named = command_members(&request.command);
+        let handles = handles
+            .into_iter()
+            .filter(|(named_member, handle)| {
+                named.contains(named_member)
+                    && named_member != &member
+                    && handle.len() <= MAX_HANDLE
+            })
+            .take(MAX_HANDLES)
+            .collect();
         Ok(Self {
             request,
+            handles,
             community: snapshot.community().to_owned(),
             epoch: current.epoch,
             member,
@@ -343,6 +379,7 @@ impl Invitation {
         }
         let snapshot = owner.snapshot().await?;
         let current = policy.current(snapshot.community(), now)?;
+        owner.provide_handles(self.handles.clone());
         owner
             .refresh(
                 &command_members(&request.command),

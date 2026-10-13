@@ -71,6 +71,18 @@ pub trait GroupOwner {
         candidate: Candidate,
         now: u64,
     ) -> PortFuture<'_, (Snapshot, Vec<CommittedEffect>)>;
+    /// The lineage-read handles this member's own contacts journal holds for
+    /// `members`. A handle is only a locator: what it yields is trusted solely
+    /// through Charter verification and its binding to the asked member.
+    fn handles<'a>(
+        &'a mut self,
+        _members: &'a BTreeSet<String>,
+    ) -> PortFuture<'a, std::collections::BTreeMap<String, Vec<u8>>> {
+        Box::pin(async { Ok(Default::default()) })
+    }
+    /// Locators received with an invitation for members this device has no
+    /// contact with. A handle from the own journal always takes precedence.
+    fn provide_handles(&mut self, _handles: std::collections::BTreeMap<String, Vec<u8>>) {}
     /// A fresh MLS key package this member makes for the group `group` that
     /// operation `operation` creates. Its private half stays in the owner's
     /// store; the consent signature binds the public bytes. Owners without a
