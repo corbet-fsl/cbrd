@@ -273,6 +273,7 @@ fn edit(age: u64, rules: Vec<cgrd::Rule>) -> Edit {
         profile: profile(age, true),
         rules,
         reachability: vec![1],
+        vouched_by: None,
     }
 }
 async fn pair(rules_a: Vec<cgrd::Rule>, rules_b: Vec<cgrd::Rule>) -> (Member, Member) {

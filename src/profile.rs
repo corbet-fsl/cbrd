@@ -17,7 +17,16 @@ pub struct Edit {
     pub rules: Vec<cgrd::Rule>,
     /// Opaque Mesh descriptor for peer-to-peer reachability (bounded by Profile).
     pub reachability: Vec<u8>,
+    /// The sponsor's signed endorsement as the newcomer's device received it
+    /// (`cvch::Endorsement` wire form), or `None`. It is a system field, not an
+    /// answer: it is published only while the community's current settings keep
+    /// `voucher.sponsor_visible` on, and dropped from the next publication when
+    /// they do not (one-way: it never appears for a member who has none).
+    pub vouched_by: Option<Vec<u8>>,
 }
+
+/// Settings key that lets the sponsor's handle appear on a member's profile.
+pub const SPONSOR_VISIBLE: &str = "voucher.sponsor_visible";
 
 /// Borrowed current owners for one preparation. Obtain `custody` and the signer
 /// together from `Keys::with_profile_custody`, and `credential` from the admitted
@@ -162,6 +171,17 @@ impl<T: clnk::Transport, R> Board<T, R> {
                 .map_err(|_| Error::Rejected)?,
         };
         draft.edit(edit.profile).map_err(|_| Error::Rejected)?;
+        // Fail closed: a missing or mistyped setting hides the sponsor.
+        let visible = read
+            .charter
+            .settings(now)
+            .ok()
+            .and_then(|settings| settings.content.get(SPONSOR_VISIBLE))
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+        draft
+            .set_vouched_by(edit.vouched_by.filter(|_| visible))
+            .map_err(|_| Error::Rejected)?;
         let mut rules = edit.rules;
         rules.retain(|rule| !matches!(rule, cgrd::Rule::Block { .. }));
         rules.extend(block_rules(blocked));
