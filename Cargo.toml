@@ -37,6 +37,7 @@ cpfl = { git = "https://git.corbet.ch/corbet-foss/cpfl.git", branch = "v01" }
 ckmg = { git = "https://git.corbet.ch/corbet-foss/ckmg.git", branch = "v01" }
 cwst = { git = "https://git.corbet.ch/corbet-foss/cwst.git", branch = "v01" }
 cchr = { git = "https://git.corbet.ch/corbet-foss/cchr.git", branch = "v01" }
+cvch = { git = "https://git.corbet.ch/corbet-foss/cvch.git", branch = "main" }
 
 [dev-dependencies]
 csgn = { git = "https://git.corbet.ch/corbet-foss/csgn", branch = "main", default-features = false, features = ["volatile-signer"] }

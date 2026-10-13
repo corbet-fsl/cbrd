@@ -10,6 +10,7 @@ pub mod join_seal;
 mod policy;
 mod profile;
 mod rooms;
+mod vouched;
 pub use authority::{BoardAuthority, Contacts, Devices, Seeds};
 pub use cgrd;
 pub use cgrp::{self, GroupView};
@@ -35,7 +36,8 @@ pub use groups::{
     prepare_intent as prepare_group_intent, required_consents,
 };
 pub use policy::{SettingsPolicy, project as project_group_policy};
-pub use profile::{Edit, PublishContext, block_rules, commit_profile};
+pub use profile::{Edit, PublishContext, SPONSOR_VISIBLE, block_rules, commit_profile};
+pub use vouched::{FORMER_MEMBER, vouched_by_line};
 pub use rooms::{Pause, RoomFeed, RoomJoinInput, RoomJoined, RoomOrdering};
 pub use {cnvl, cpfl, cshm};
 /// A bounded locally rechecked page; original owner types carry its evidence.
