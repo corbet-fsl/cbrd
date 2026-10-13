@@ -437,3 +437,142 @@ fn an_intent_always_names_the_local_member() {
     .unwrap();
     assert!(owner.snapshot.members(&[1; 32]).is_ok());
 }
+
+fn only(member: &str) -> BTreeSet<String> {
+    BTreeSet::from([member.to_owned()])
+}
+
+fn block<T>(future: impl std::future::Future<Output = T>) -> T {
+    futures_executor::block_on(future)
+}
+
+fn circle_proposal(actor: &mut Owner, group: u8, members: BTreeSet<String>) -> cbrd::GroupProposal {
+    let policy = PolicyAt::new(COMMUNITY, policy());
+    let command = Command::Create {
+        id: [group; 32],
+        members,
+        seed: false,
+    };
+    block(cbrd::propose_group_command(actor, &policy, command, false)).unwrap()
+}
+
+/// Deliver the invitation as the text of a conversation message and return
+/// the member's decision text.
+fn answer(
+    invitee: &mut Owner,
+    from: &str,
+    text: &str,
+    accept: bool,
+) -> Result<cbrd::GroupMessage, Error> {
+    let policy = PolicyAt::new(COMMUNITY, policy());
+    let message = cbrd::GroupMessage::from_text(text)?;
+    let invitation = block(cbrd::Invitation::receive(invitee, &policy, from, message))?;
+    block(invitation.answer(invitee, accept, false))
+}
+
+#[test]
+fn a_circle_needs_each_member_to_answer_for_themselves_before_it_exists() {
+    let mut m0 = Owner::new("m0", false, only("m0"));
+    let mut m1 = Owner::new("m1", false, only("m1"));
+    let mut m2 = Owner::new("m2", false, only("m2"));
+    let mut proposal = circle_proposal(&mut m0, 1, names(0, 3));
+    assert_eq!(
+        proposal.awaiting(),
+        &BTreeSet::from(["m1".into(), "m2".into()])
+    );
+    let policy = PolicyAt::new(COMMUNITY, policy());
+    // Only the actor's own consent exists; the request cannot be committed.
+    assert!(
+        block(cbrd::commit_group_proposal(
+            &mut m0, &policy, &proposal, 128
+        ))
+        .is_err()
+    );
+
+    let text = proposal.invitation().to_text().unwrap();
+    for (from, owner) in [("m1", &mut m1), ("m2", &mut m2)] {
+        let reply = answer(owner, "m0", &text, true).unwrap();
+        proposal.admit(from, reply, 1_000_150).unwrap();
+    }
+    assert!(proposal.complete());
+    let (views, _) = block(cbrd::commit_group_proposal(
+        &mut m0, &policy, &proposal, 128,
+    ))
+    .unwrap();
+    assert_eq!(views.len(), 1);
+}
+
+#[test]
+fn one_decline_or_a_replayed_wrong_or_foreign_answer_never_completes_a_group() {
+    let mut m0 = Owner::new("m0", false, only("m0"));
+    let mut m1 = Owner::new("m1", false, only("m1"));
+    let mut m2 = Owner::new("m2", false, only("m2"));
+    let mut proposal = circle_proposal(&mut m0, 1, names(0, 3));
+    let text = proposal.invitation().to_text().unwrap();
+    let yes = answer(&mut m1, "m0", &text, true).unwrap();
+
+    // A consent is accepted from its own member only, and only once.
+    assert!(proposal.admit("m2", yes.clone(), 1_000_150).is_err());
+    proposal.admit("m1", yes.clone(), 1_000_150).unwrap();
+    assert!(proposal.admit("m1", yes, 1_000_150).is_err());
+
+    // A consent for another operation or another command does not count.
+    let mut other = circle_proposal(&mut Owner::new("m0", false, only("m0")), 9, names(0, 3));
+    let stray = answer(&mut m2, "m0", &other.invitation().to_text().unwrap(), true).unwrap();
+    assert!(proposal.admit("m2", stray, 1_000_150).is_err());
+    let _ = &mut other;
+
+    // A decline is final for this proposal.
+    let no = answer(&mut m2, "m0", &text, false).unwrap();
+    proposal.admit("m2", no, 1_000_150).unwrap();
+    assert!(proposal.declined() && !proposal.complete());
+    let policy = PolicyAt::new(COMMUNITY, policy());
+    assert!(
+        block(cbrd::commit_group_proposal(
+            &mut m0, &policy, &proposal, 128
+        ))
+        .is_err()
+    );
+}
+
+#[test]
+fn an_invitation_is_refused_from_a_stranger_for_a_non_member_or_when_stale() {
+    let mut m0 = Owner::new("m0", false, only("m0"));
+    let proposal = circle_proposal(&mut m0, 1, names(0, 3));
+    let text = proposal.invitation().to_text().unwrap();
+    // Not sent by the actor named in the request.
+    assert!(answer(&mut Owner::new("m1", false, only("m1")), "m2", &text, true).is_err());
+    // The local member is not a consenting party.
+    assert!(answer(&mut Owner::new("m7", false, only("m7")), "m0", &text, true).is_err());
+    // The actor cannot invite itself.
+    assert!(answer(&mut Owner::new("m0", false, only("m0")), "m0", &text, true).is_err());
+    // Stale: the receiver's clock is far beyond the consent window.
+    let mut late = Owner::new("m1", false, only("m1"));
+    late.clock += 10_000;
+    assert!(answer(&mut late, "m0", &text, true).is_err());
+    // Wrong version and unknown fields are refused.
+    assert!(
+        cbrd::GroupMessage::from_text(&text.replace("\"version\":1", "\"version\":2")).is_err()
+    );
+    assert!(
+        cbrd::GroupMessage::from_text(
+            "{\"kind\":\"decline\",\"version\":1,\"operation\":[],\"member\":\"x\",\"extra\":1}"
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn nobody_can_be_added_or_removed_without_the_member_answering() {
+    let mut m0 = Owner::new("m0", false, only("m0"));
+    // Create carries every member: the actor alone cannot sign for them.
+    let proposal = circle_proposal(&mut m0, 1, names(0, 3));
+    let policy = PolicyAt::new(COMMUNITY, policy());
+    assert!(proposal.awaiting().contains("m1"));
+    assert!(
+        block(cbrd::commit_group_proposal(
+            &mut m0, &policy, &proposal, 128
+        ))
+        .is_err()
+    );
+}

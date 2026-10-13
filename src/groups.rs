@@ -90,7 +90,7 @@ impl PolicySource for PolicyAt {
 }
 
 /// Sized view of an unsized port, so the object-safe owner can feed Groups.
-struct Port<'a, T: ?Sized>(&'a T);
+pub(crate) struct Port<'a, T: ?Sized>(pub(crate) &'a T);
 impl<T: PolicySource + ?Sized> PolicySource for Port<'_, T> {
     fn current(&self, community: &str, now: u64) -> Result<Policy> {
         self.0.current(community, now)

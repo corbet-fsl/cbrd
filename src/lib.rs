@@ -4,6 +4,7 @@
 mod authority;
 mod committed;
 mod exchange;
+mod group_invite;
 mod groups;
 mod policy;
 mod profile;
@@ -18,6 +19,10 @@ pub use csrh::{Discovery, Input, Verification, ViewLimits};
 pub use exchange::{
     Answer, ExchangeContext, MAX_MESSAGE_BYTES, Notice, Opened, PEER_KEY_OWNER, Reply, Request,
     peer_key_slot,
+};
+pub use group_invite::{
+    INVITE_VERSION, Invitation, Message as GroupMessage, Proposal as GroupProposal,
+    commit as commit_group_proposal, propose as propose_group_command,
 };
 pub use groups::{
     CONSENT_SECONDS, GroupOwner, Intent as GroupIntent, PolicyAt, PortFuture, Signed,
