@@ -889,7 +889,7 @@ dependencies = [
 [[package]]
 name = "cgrp"
 version = "0.1.0"
-source = "git+https://git.corbet.ch/corbet-foss/cgrp.git?branch=v01#d222dce4d04a2e5ac9fbd6092dc7da16429f2574"
+source = "git+https://git.corbet.ch/corbet-foss/cgrp.git?branch=v01#9f411dde3ae136397400163987d37fa7070467de"
 dependencies = [
  "ckmg",
  "cmbl",

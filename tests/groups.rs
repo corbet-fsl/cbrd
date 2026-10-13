@@ -159,6 +159,10 @@ struct Owner {
     /// Members who answered the invitation; others refuse.
     answered: BTreeSet<String>,
     fail_clock: bool,
+    /// Pretend to own an MLS store: key packages, Welcome and join.
+    mls: bool,
+    packages_seen: Vec<Vec<u8>>,
+    joined_with: Option<Vec<u8>>,
 }
 impl Owner {
     fn new(me: &str, seeds: bool, answered: BTreeSet<String>) -> Self {
@@ -172,10 +176,63 @@ impl Owner {
             operations: 0,
             answered,
             fail_clock: false,
+            mls: false,
+            packages_seen: vec![],
+            joined_with: None,
         }
     }
 }
 impl GroupOwner for Owner {
+    fn key_package<'a>(&'a mut self, group: Id, operation: Id) -> PortFuture<'a, Vec<u8>> {
+        Box::pin(async move {
+            if !self.mls {
+                return Ok(Vec::new());
+            }
+            let mut package = self.me.clone().into_bytes();
+            package.extend_from_slice(&group);
+            package.extend_from_slice(&operation);
+            Ok(package)
+        })
+    }
+    fn publish_request<'a>(
+        &'a mut self,
+        candidate: Candidate,
+        request: &'a cgrp::Request,
+        _: &'a dyn cgrp::PolicySource,
+        now: u64,
+    ) -> PortFuture<'a, cbrd::Published> {
+        Box::pin(async move {
+            if self.mls {
+                self.packages_seen = request
+                    .consents
+                    .iter()
+                    .filter(|consent| consent.member != request.actor)
+                    .map(|consent| consent.key_package.clone())
+                    .collect();
+            }
+            let (snapshot, effects) = candidate.persist(&mut self.store, now).await?;
+            self.snapshot = snapshot.clone();
+            Ok(cbrd::Published {
+                snapshot,
+                effects,
+                welcome: self.mls.then(|| b"welcome".to_vec()),
+            })
+        })
+    }
+    fn publish_welcome<'a>(
+        &'a mut self,
+        candidate: Candidate,
+        welcome: &'a [u8],
+        _: &'a dyn cgrp::PolicySource,
+        now: u64,
+    ) -> PortFuture<'a, (Snapshot, Vec<CommittedEffect>)> {
+        Box::pin(async move {
+            let (snapshot, effects) = candidate.persist(&mut self.store, now).await?;
+            self.snapshot = snapshot.clone();
+            self.joined_with = Some(welcome.to_vec());
+            Ok((snapshot, effects))
+        })
+    }
     fn member(&mut self) -> cgrp::Result<String> {
         Ok(self.me.clone())
     }
@@ -358,6 +415,7 @@ fn the_authority_adapter_checks_expiry_and_leaves_parent_imports_refused() {
         command_digest: [2; 32],
         profile_visibility: false,
         valid_until: 10,
+        key_package: vec![],
         signature: vec![],
         authority: key("m0").verifying_key().to_bytes().to_vec(),
     };
@@ -495,10 +553,11 @@ fn a_circle_needs_each_member_to_answer_for_themselves_before_it_exists() {
         proposal.admit(from, reply, 1_000_150).unwrap();
     }
     assert!(proposal.complete());
-    let (views, _) = block(cbrd::commit_group_proposal(
+    let views = block(cbrd::commit_group_proposal(
         &mut m0, &policy, &proposal, 128,
     ))
-    .unwrap();
+    .unwrap()
+    .views;
     assert_eq!(views.len(), 1);
 }
 
@@ -575,4 +634,87 @@ fn nobody_can_be_added_or_removed_without_the_member_answering() {
         ))
         .is_err()
     );
+}
+
+fn invitation_for(invitee: &mut Owner, from: &str, text: &str) -> cbrd::Invitation {
+    let policy = PolicyAt::new(COMMUNITY, policy());
+    let message = cbrd::GroupMessage::from_text(text).unwrap();
+    block(cbrd::Invitation::receive(invitee, &policy, from, message)).unwrap()
+}
+
+#[test]
+fn a_created_group_carries_each_members_signed_key_package_and_hands_out_one_welcome() {
+    let policy = PolicyAt::new(COMMUNITY, policy());
+    let mut m0 = Owner::new("m0", false, only("m0"));
+    let mut m1 = Owner::new("m1", false, only("m1"));
+    let mut m2 = Owner::new("m2", false, only("m2"));
+    for owner in [&mut m0, &mut m1, &mut m2] {
+        owner.mls = true;
+    }
+    let mut proposal = circle_proposal(&mut m0, 1, names(0, 3));
+    let text = proposal.invitation().to_text().unwrap();
+    let mut invitations = vec![];
+    for (from, owner) in [("m1", &mut m1), ("m2", &mut m2)] {
+        let invitation = invitation_for(owner, "m0", &text);
+        let reply = block(invitation.answer(owner, true, false)).unwrap();
+        // The package is part of the signed consent, tied to this group.
+        let cbrd::GroupMessage::Consent { consent, .. } = &reply else {
+            panic!("a consent")
+        };
+        assert!(consent.key_package.starts_with(from.as_bytes()));
+        assert!(!consent.key_package.is_empty());
+        proposal.admit(from, reply, 1_000_150).unwrap();
+        invitations.push((from, invitation));
+    }
+    let committed = block(cbrd::commit_group_proposal(
+        &mut m0, &policy, &proposal, 128,
+    ))
+    .unwrap();
+    // The actor built the group from exactly the others' signed packages.
+    assert_eq!(m0.packages_seen.len(), 2);
+    let welcome = committed.welcome.expect("an MLS group has a Welcome");
+
+    // Each member joins from the Welcome the actor sent; nobody else can.
+    let (_, one) = &invitations[0];
+    assert!(
+        block(one.join(&mut m2, &policy, "m0", welcome.clone(), 128)).is_err(),
+        "another member's invitation does not join"
+    );
+    assert!(
+        block(one.join(&mut m1, &policy, "m2", welcome.clone(), 128)).is_err(),
+        "only the actor's Welcome counts"
+    );
+    for ((_, invitation), owner) in invitations.iter().zip([&mut m1, &mut m2]) {
+        let (views, _) =
+            block(invitation.join(owner, &policy, "m0", welcome.clone(), 128)).unwrap();
+        assert_eq!(views.len(), 1);
+        assert_eq!(owner.joined_with.as_deref(), Some(&b"welcome"[..]));
+    }
+}
+
+#[test]
+fn a_swapped_key_package_breaks_the_consent_and_the_group_is_not_created() {
+    let policy = PolicyAt::new(COMMUNITY, policy());
+    let mut m0 = Owner::new("m0", false, only("m0"));
+    let mut m1 = Owner::new("m1", false, only("m1"));
+    let mut m2 = Owner::new("m2", false, only("m2"));
+    for owner in [&mut m0, &mut m1, &mut m2] {
+        owner.mls = true;
+    }
+    let mut proposal = circle_proposal(&mut m0, 1, names(0, 3));
+    let text = proposal.invitation().to_text().unwrap();
+    for (from, owner) in [("m1", &mut m1), ("m2", &mut m2)] {
+        let mut reply = answer(owner, "m0", &text, true).unwrap();
+        if let (true, cbrd::GroupMessage::Consent { consent, .. }) = (from == "m2", &mut reply) {
+            consent.key_package = b"attacker".to_vec();
+        }
+        proposal.admit(from, reply, 1_000_150).unwrap();
+    }
+    assert!(
+        block(cbrd::commit_group_proposal(
+            &mut m0, &policy, &proposal, 128
+        ))
+        .is_err()
+    );
+    assert!(m0.packages_seen.is_empty());
 }

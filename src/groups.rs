@@ -71,6 +71,60 @@ pub trait GroupOwner {
         candidate: Candidate,
         now: u64,
     ) -> PortFuture<'_, (Snapshot, Vec<CommittedEffect>)>;
+    /// A fresh MLS key package this member makes for the group `group` that
+    /// operation `operation` creates. Its private half stays in the owner's
+    /// store; the consent signature binds the public bytes. Owners without a
+    /// Threads store keep the default (no package).
+    fn key_package<'a>(&'a mut self, _group: Id, _operation: Id) -> PortFuture<'a, Vec<u8>> {
+        Box::pin(async { Ok(Vec::new()) })
+    }
+    /// The creating member's publication: Groups and the MLS group (built from
+    /// the other members' key packages carried by `request`'s consents) become
+    /// visible in one durable write. Returns the Welcome the other members need
+    /// when an MLS group was created. The default is `publish` without MLS.
+    fn publish_request<'a>(
+        &'a mut self,
+        candidate: Candidate,
+        _request: &'a Request,
+        _policy: &'a dyn PolicySource,
+        now: u64,
+    ) -> PortFuture<'a, Published> {
+        Box::pin(async move {
+            let (snapshot, effects) = self.publish(candidate, now).await?;
+            Ok(Published {
+                snapshot,
+                effects,
+                welcome: None,
+            })
+        })
+    }
+    /// A consenting member's publication from a received Welcome: Groups and
+    /// the joined MLS group become visible in one durable write.
+    fn publish_welcome<'a>(
+        &'a mut self,
+        _candidate: Candidate,
+        _welcome: &'a [u8],
+        _policy: &'a dyn PolicySource,
+        _now: u64,
+    ) -> PortFuture<'a, (Snapshot, Vec<CommittedEffect>)> {
+        Box::pin(async { Err(cgrp::Error::Unavailable) })
+    }
+}
+
+/// What a creating member's publication produced.
+pub struct Published {
+    pub snapshot: Snapshot,
+    pub effects: Vec<CommittedEffect>,
+    /// The MLS Welcome for the other members, if a group was created.
+    pub welcome: Option<Vec<u8>>,
+}
+
+/// The group a command creates, if it creates one (and so needs MLS).
+pub fn created_group(command: &Command) -> Option<Id> {
+    match command {
+        Command::Create { id, .. } | Command::Fork { id, .. } => Some(*id),
+        _ => None,
+    }
 }
 
 /// Everyone whose signed consent the command needs.
@@ -187,6 +241,7 @@ pub async fn execute<O: GroupOwner + ?Sized>(
             command_digest: digest,
             profile_visibility: visible,
             valid_until: now.saturating_add(CONSENT_SECONDS),
+            key_package: vec![],
             signature: vec![],
             authority: vec![],
         };

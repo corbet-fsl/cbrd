@@ -7,9 +7,12 @@
 //! stay immutable: a changed membership is always a fork the members consent
 //! to; nobody can add or remove another member.
 use crate::groups::{
-    CONSENT_SECONDS, GroupOwner, Port, Result, command_members, required_consents,
+    CONSENT_SECONDS, GroupOwner, Port, Result, command_members, created_group, required_consents,
 };
-use cgrp::{Command, CommittedEffect, Consent, Error, GroupView, Id, PolicySource, Request};
+use cgrp::{
+    Authority, Command, CommittedEffect, Consent, Error, GroupView, Id, Policy, PolicySource,
+    Request,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -33,6 +36,14 @@ pub enum Message {
         operation: Id,
         member: String,
     },
+    /// The committed request (every signed consent) and the MLS Welcome of the
+    /// group it created, sent to one consenting member over its conversation.
+    /// It may be sent again: a member that already joined refuses the repeat.
+    Welcome {
+        version: u8,
+        request: Request,
+        welcome: Vec<u8>,
+    },
 }
 
 impl Message {
@@ -44,7 +55,8 @@ impl Message {
         let version = match &message {
             Self::Invite { version, .. }
             | Self::Consent { version, .. }
-            | Self::Decline { version, .. } => *version,
+            | Self::Decline { version, .. }
+            | Self::Welcome { version, .. } => *version,
         };
         if version != INVITE_VERSION {
             return Err(Error::Invalid);
@@ -127,7 +139,7 @@ impl Proposal {
                 self.declined = true;
                 Ok(())
             }
-            Message::Invite { .. } => Err(Error::Invalid),
+            Message::Invite { .. } | Message::Welcome { .. } => Err(Error::Invalid),
         }
     }
 }
@@ -163,6 +175,7 @@ pub async fn propose<O: GroupOwner + ?Sized>(
             current.epoch,
             digest,
             visible,
+            Vec::new(),
             now,
         )
         .await?;
@@ -177,6 +190,14 @@ pub async fn propose<O: GroupOwner + ?Sized>(
     })
 }
 
+/// A published proposal: the committed views and effects, and the Welcome
+/// messages to send (one per other member) when an MLS group was created.
+pub struct Committed {
+    pub views: Vec<GroupView>,
+    pub effects: Vec<CommittedEffect>,
+    pub welcome: Option<Message>,
+}
+
 /// Prepare and publish a complete proposal. A proposal with a missing or
 /// declined consent is refused before Groups is asked.
 pub async fn commit<O: GroupOwner + ?Sized>(
@@ -184,7 +205,7 @@ pub async fn commit<O: GroupOwner + ?Sized>(
     policy: &(impl PolicySource + ?Sized),
     proposal: &Proposal,
     max_groups: usize,
-) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
+) -> Result<Committed> {
     if !proposal.complete() {
         return Err(Error::Authority);
     }
@@ -205,8 +226,19 @@ pub async fn commit<O: GroupOwner + ?Sized>(
         now,
         max_groups,
     )?;
-    let (committed, effects) = owner.publish(candidate, now).await?;
-    Ok((committed.views(&current, now)?, effects))
+    let published = owner
+        .publish_request(candidate, &proposal.request, &Port(policy), now)
+        .await?;
+    let welcome = published.welcome.map(|welcome| Message::Welcome {
+        version: INVITE_VERSION,
+        request: proposal.request.clone(),
+        welcome,
+    });
+    Ok(Committed {
+        views: published.snapshot.views(&current, now)?,
+        effects: published.effects,
+        welcome,
+    })
 }
 
 /// The invitee's side: a verified request waiting for the member's own answer.
@@ -273,6 +305,69 @@ impl Invitation {
         })
     }
 
+    /// Join the group a received Welcome belongs to. The sender must be the
+    /// actor, the request the exact one this member consented to (same
+    /// operation, command and this member's own signed consent), and Groups
+    /// re-checks every consent. The actor's contacts with the other members
+    /// cannot be seen from here; each of them signed a consent of their own,
+    /// which Groups still verifies through their freshly read lineage, so a
+    /// member whose lineage is unreadable makes the join fail closed.
+    pub async fn join<O: GroupOwner + ?Sized>(
+        &self,
+        owner: &mut O,
+        policy: &(impl PolicySource + ?Sized),
+        from: &str,
+        message: Message,
+        max_groups: usize,
+    ) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
+        let Message::Welcome {
+            request, welcome, ..
+        } = message
+        else {
+            return Err(Error::Invalid);
+        };
+        let now = owner.now()?;
+        let own_consent = request
+            .consents
+            .iter()
+            .any(|consent| consent.member == self.member && !consent.signature.is_empty());
+        if owner.member()? != self.member
+            || from != self.request.actor
+            || request.actor != self.request.actor
+            || request.operation != self.request.operation
+            || request.command_digest()? != self.request.command_digest()?
+            || !own_consent
+            || welcome.is_empty()
+        {
+            return Err(Error::Authority);
+        }
+        let snapshot = owner.snapshot().await?;
+        let current = policy.current(snapshot.community(), now)?;
+        owner
+            .refresh(
+                &command_members(&request.command),
+                &required_consents(&request.command, &request.actor),
+            )
+            .await?;
+        let authority = ReceiverAuthority {
+            inner: owner.authority(),
+            me: &self.member,
+            actor: &request.actor,
+        };
+        let candidate = cgrp::prepare(
+            &snapshot,
+            &request,
+            &Port(policy),
+            &authority,
+            now,
+            max_groups,
+        )?;
+        let (committed, effects) = owner
+            .publish_welcome(candidate, &welcome, &Port(policy), now)
+            .await?;
+        Ok((committed.views(&current, now)?, effects))
+    }
+
     /// The member's decision. Accepting signs this member's consent over the
     /// exact command digest; `visible` is the semipublic profile statement.
     pub async fn answer<O: GroupOwner + ?Sized>(
@@ -293,6 +388,12 @@ impl Invitation {
         }
         let now = owner.now()?;
         let digest = self.request.command_digest()?;
+        // A group that needs MLS gets this member's fresh key package, bound
+        // by the consent signature.
+        let key_package = match created_group(&self.request.command) {
+            Some(group) => owner.key_package(group, self.request.operation).await?,
+            None => Vec::new(),
+        };
         let consent = sign(
             owner,
             &self.community,
@@ -301,6 +402,7 @@ impl Invitation {
             self.epoch,
             digest,
             visible,
+            key_package,
             now,
         )
         .await?;
@@ -320,6 +422,7 @@ async fn sign<O: GroupOwner + ?Sized>(
     epoch: u64,
     digest: Id,
     visible: bool,
+    key_package: Vec<u8>,
     now: u64,
 ) -> Result<Consent> {
     let mut consent = Consent {
@@ -330,6 +433,7 @@ async fn sign<O: GroupOwner + ?Sized>(
         command_digest: digest,
         profile_visibility: visible,
         valid_until: now.saturating_add(CONSENT_SECONDS),
+        key_package,
         signature: vec![],
         authority: vec![],
     };
@@ -357,5 +461,45 @@ impl Invitation {
     }
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         serde_json::from_slice(bytes).map_err(|_| Error::Invalid)
+    }
+}
+
+/// Groups' authority as the joining member can see it. Only the actor's contact
+/// with another member is beyond this device's view; every other check is the
+/// inner authority's.
+struct ReceiverAuthority<'a, A: ?Sized> {
+    inner: &'a A,
+    me: &'a str,
+    actor: &'a str,
+}
+impl<A: Authority + ?Sized> Authority for ReceiverAuthority<'_, A> {
+    fn consent(&self, consent: &Consent, now: u64) -> Result<()> {
+        self.inner.consent(consent, now)
+    }
+    fn contact(&self, community: &str, member: &str, contact: &str, now: u64) -> Result<()> {
+        // The actor's relation to a third member is that member's own consent
+        // to decide (verified above); relations of this device stay checked.
+        if member == self.actor {
+            return if contact == self.me {
+                // The actor's relation to this member is this member's own
+                // journal entry for the actor (invitations already required it).
+                self.inner.contact(community, self.me, self.actor, now)
+            } else {
+                Ok(())
+            };
+        }
+        self.inner.contact(community, member, contact, now)
+    }
+    fn seed(&self, community: &str, group: &Id, now: u64) -> Result<()> {
+        self.inner.seed(community, group, now)
+    }
+    fn parent(
+        &self,
+        state: &cgrp::GroupState,
+        request: &Request,
+        policy: &Policy,
+        now: u64,
+    ) -> Result<()> {
+        self.inner.parent(state, request, policy, now)
     }
 }

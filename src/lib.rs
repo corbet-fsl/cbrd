@@ -21,12 +21,12 @@ pub use exchange::{
     peer_key_slot,
 };
 pub use group_invite::{
-    INVITE_VERSION, Invitation, Message as GroupMessage, Proposal as GroupProposal,
-    commit as commit_group_proposal, propose as propose_group_command,
+    Committed as GroupCommitted, INVITE_VERSION, Invitation, Message as GroupMessage,
+    Proposal as GroupProposal, commit as commit_group_proposal, propose as propose_group_command,
 };
 pub use groups::{
-    CONSENT_SECONDS, GroupOwner, Intent as GroupIntent, PolicyAt, PortFuture, Signed,
-    command_members, execute as execute_group_command, execute_intent as execute_group_intent,
+    CONSENT_SECONDS, GroupOwner, Intent as GroupIntent, PolicyAt, PortFuture, Published, Signed,
+    command_members, created_group, execute as execute_group_command, execute_intent as execute_group_intent,
     required_consents,
 };
 pub use policy::{SettingsPolicy, project as project_group_policy};
