@@ -27,6 +27,7 @@ pub use exchange::{
 };
 pub use group_invite::{
     Committed as GroupCommitted, INVITE_VERSION, Invitation, Message as GroupMessage,
+    consent_handles,
     Proposal as GroupProposal, commit as commit_group_proposal, propose as propose_group_command,
 };
 pub use groups::{
