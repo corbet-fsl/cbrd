@@ -27,8 +27,7 @@ pub use group_invite::{
 };
 pub use groups::{
     CONSENT_SECONDS, GroupOwner, Intent as GroupIntent, PolicyAt, PortFuture, Signed,
-    command_members, execute as execute_group_command, execute_intent as execute_group_intent,
-    required_consents,
+    execute as execute_group_command, execute_intent as execute_group_intent, required_consents,
 };
 pub use policy::{SettingsPolicy, project as project_group_policy};
 pub use profile::{Edit, PublishContext, block_rules, commit_profile};
