@@ -2,7 +2,7 @@
 //! count. Consent is a Groups join with the semipublic statement; MLS and the
 //! key hand-over belong to Threads behind `ctnd::Threads`. Members see only how
 //! many connections are present, never traffic volume or identities.
-use crate::{Board, join_seal};
+use crate::Board;
 use clnk::cmbl;
 use ctnd::{Error, Link, OrderReply, OrderRequest, PortFuture};
 
@@ -112,7 +112,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
     }
 
     /// A member answers request `to` with the room state sealed to the key in
-    /// the request (see [`join_seal`]).
+    /// the request (see [`crate::join_seal`]).
     pub async fn answer_room_join(
         &self,
         room: cmbl::Id,
