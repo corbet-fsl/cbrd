@@ -55,6 +55,15 @@ pub trait GroupOwner {
         statement: &'a [u8],
         expires: u64,
     ) -> PortFuture<'a, Signed>;
+    /// The durable bytes of this member's pending proposals and invitations, if
+    /// the owner keeps any. Owners without durable storage keep the default.
+    fn desk_load(&mut self) -> PortFuture<'_, Option<Vec<u8>>> {
+        Box::pin(async { Ok(None) })
+    }
+    /// Replace the durable desk bytes.
+    fn desk_save<'a>(&'a mut self, _bytes: &'a [u8]) -> PortFuture<'a, ()> {
+        Box::pin(async { Ok(()) })
+    }
     /// Persist the checkpoint and publish the effects atomically, repeating
     /// current authority checks; returns the committed state.
     fn publish(
