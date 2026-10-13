@@ -71,6 +71,47 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
         self.link.order_room(command, ordering).await
     }
 
+    /// Publish the room's sealed `room_state` for newcomers after this member
+    /// committed an epoch. Returns the ordering counter the state is filed under.
+    pub async fn publish_room_state(
+        &self,
+        room: cmbl::Id,
+        ciphertext: Vec<u8>,
+    ) -> Result<u64, clnk::ErrorCode> {
+        let outcome = self
+            .link
+            .execute_room(cmbl::Request {
+                room,
+                operation: state_operation(&room, &ciphertext),
+                action: cmbl::Action::Relay {
+                    ciphertext,
+                    kind: cmbl::FrameKind::RoomState,
+                },
+            })
+            .await?;
+        Ok(outcome.counter)
+    }
+
+    /// The latest published `room_state` and the ordering counter it follows,
+    /// with the room's ordering generation; `None` while no member published one.
+    /// Needs a current room pass. Nothing else of the room is returned.
+    pub async fn room_state(
+        &self,
+        room: cmbl::Id,
+    ) -> Result<Option<(cmbl::Id, u64, Vec<u8>)>, clnk::ErrorCode> {
+        let outcome = self
+            .link
+            .execute_room(cmbl::Request {
+                room,
+                operation: state_operation(&room, b"read"),
+                action: cmbl::Action::Read { after: 0 },
+            })
+            .await?;
+        Ok(state_frame(&outcome, &outcome.ordering)
+            .map_err(|_| clnk::ErrorCode::Reconcile)?
+            .map(|(counter, sealed)| (outcome.ordering, counter, sealed)))
+    }
+
     /// How many connections are present in a room right now. Nothing else of the
     /// room crosses this call: no member list, no traffic, no frames.
     pub async fn here_now(
@@ -124,8 +165,41 @@ fn context_frame(
     Ok(outcome
         .frames
         .iter()
-        .find(|frame| frame.counter == wanted)
+        .find(|frame| frame.kind == cmbl::FrameKind::Message && frame.counter == wanted)
         .map(|frame| frame.ciphertext.clone()))
+}
+
+/// The frame kind `room_state`: a current member's [`cthr::ParentEvidence`]
+/// (MLS GroupInfo, canonical state, ratchet tree) for newcomers. The member that
+/// commits an epoch publishes it on the room's anonymous transport right after;
+/// the room keeps only the latest. Joiners read it with a valid room pass.
+/// cbrd moves opaque bytes: the evidence includes the ratchet tree, which the
+/// blind room service must never see in the clear, so sealing and opening
+/// belong to the caller (the key a joiner without MLS state can derive is an
+/// open design decision). Threads verifies the evidence before any import.
+fn state_frame(
+    outcome: &cmbl::Outcome,
+    ordering: &cmbl::Id,
+) -> Result<Option<(u64, Vec<u8>)>, Error> {
+    if &outcome.ordering != ordering {
+        return Err(Error::Reconcile);
+    }
+    Ok(outcome
+        .frames
+        .iter()
+        .rev()
+        .find(|frame| frame.kind == cmbl::FrameKind::RoomState)
+        .map(|frame| (frame.counter, frame.ciphertext.clone())))
+}
+
+fn state_operation(room: &cmbl::Id, bytes: &[u8]) -> cmbl::Id {
+    let mut hash = blake3::Hasher::new();
+    hash.update(b"cbrd.room.state.v1\0");
+    hash.update(room);
+    hash.update(bytes);
+    let mut id = [0; 16];
+    id.copy_from_slice(&hash.finalize().as_bytes()[..16]);
+    id
 }
 
 /// Time between two reads of room traffic; time stays behind a trait so the
@@ -322,6 +396,7 @@ mod tests {
                 .iter()
                 .enumerate()
                 .map(|(index, counter)| cmbl::RelayFrame {
+                    kind: cmbl::FrameKind::Message,
                     sequence: index as u64 + 1,
                     counter: *counter,
                     ciphertext: vec![index as u8],
@@ -343,5 +418,23 @@ mod tests {
     fn another_ordering_generation_is_a_reconcile_not_a_commit() {
         let room = outcome([2; 16], &[8]);
         assert_eq!(context_frame(&room, &[1; 16], 8), Err(Error::Reconcile));
+    }
+
+    #[test]
+    fn the_context_commit_is_never_a_room_state_frame() {
+        let mut room = outcome([1; 16], &[8, 8]);
+        room.frames[0].kind = cmbl::FrameKind::RoomState;
+        assert_eq!(context_frame(&room, &[1; 16], 8), Ok(Some(vec![1])));
+    }
+
+    #[test]
+    fn the_latest_state_frame_is_the_room_state() {
+        let mut room = outcome([1; 16], &[7, 8]);
+        assert_eq!(state_frame(&room, &[1; 16]), Ok(None));
+        room.frames[0].kind = cmbl::FrameKind::RoomState;
+        assert_eq!(state_frame(&room, &[1; 16]), Ok(Some((7, vec![0]))));
+        room.frames[1].kind = cmbl::FrameKind::RoomState;
+        assert_eq!(state_frame(&room, &[1; 16]), Ok(Some((8, vec![1]))));
+        assert_eq!(state_frame(&room, &[9; 16]), Err(Error::Reconcile));
     }
 }
