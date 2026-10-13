@@ -491,6 +491,135 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
     }
 }
 
+/// What a newcomer's external commit carries as its authenticated companion:
+/// its signed Groups `Join` request and the lineage-read handle of its OWN
+/// certified lineage. The handle is only a locator: an admitting member reads
+/// the lineage through it and believes nothing but the Charter-verified record
+/// bound to the pseudonym the request names (a substituted handle reads another
+/// member's record, or none, and the admission is refused).
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RoomCompanion {
+    pub request: cgrp::Request,
+    pub handle: Vec<u8>,
+}
+
+impl RoomCompanion {
+    /// The companion bytes the external commit authenticates.
+    pub fn encode(&self) -> Option<Vec<u8>> {
+        let bytes = serde_json::to_vec(self).ok()?;
+        (bytes.len() <= ctnd::MAX_COMPANION).then_some(bytes)
+    }
+    /// A companion exactly as `encode` wrote it; anything else is refused.
+    pub fn decode(bytes: &[u8]) -> Option<Self> {
+        serde_json::from_slice(bytes).ok()
+    }
+}
+
+/// Everything one admission needs from the admitting member's device. The Board
+/// adds the room transport that orders the member commit.
+pub struct RoomAdmitInput<'a, K, B: cwst::backend::Backend, S, A, C> {
+    pub keys: &'a mut K,
+    pub clock: &'a mut C,
+    pub store: &'a mut cwst::Store<B>,
+    /// This member's Threads for the room.
+    pub threads: &'a cthr::Threads,
+    /// The Groups join prepared from the newcomer's request and consent.
+    pub groups: cgrp::Candidate,
+    /// The newcomer's ordered external commit with its companion.
+    pub frame: &'a JoinFrame,
+    pub room: cmbl::Id,
+    pub source: &'a S,
+    pub authority: &'a A,
+    pub operation: [u8; 32],
+}
+
+/// A completed admission: the member commit is ordered, and Groups and Threads
+/// became visible together in one durable write.
+pub struct RoomAdmitted {
+    pub committed: cthr::Committed,
+    pub snapshot: cgrp::Snapshot,
+}
+
+fn thread_error(error: cthr::Error) -> Error {
+    match error {
+        cthr::Error::Authority | cthr::Error::Scope => Error::Authority,
+        cthr::Error::Conflict => Error::Reconcile,
+        cthr::Error::Storage => Error::Storage,
+        _ => Error::Unavailable,
+    }
+}
+
+impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
+    /// Admit a newcomer as an existing member: authenticate its external commit
+    /// against this member's exact Groups/MLS state, install the canonical
+    /// context with the member commit, order that commit right after the join
+    /// (the newcomer waits for it) and publish Groups and Threads in one write.
+    /// Nothing is published before the member commit was ordered.
+    pub async fn admit_room<K, B, S, A, C>(
+        &self,
+        input: RoomAdmitInput<'_, K, B, S, A, C>,
+    ) -> Result<RoomAdmitted, Error>
+    where
+        K: cthr::keys::Custody,
+        B: cwst::backend::Backend,
+        S: cgrp::PolicySource,
+        A: cgrp::Authority,
+        C: ckmg::Clock,
+    {
+        let RoomAdmitInput {
+            keys,
+            clock,
+            store,
+            threads,
+            groups,
+            frame,
+            room,
+            source,
+            authority,
+            operation,
+        } = input;
+        let (candidate, wire) = {
+            let effects = groups.prepare_effects();
+            let decision = effects.first().ok_or(Error::Authority)?;
+            let admission = threads
+                .receive_room_join(keys, store, decision, &frame.commit, &frame.companion, clock)
+                .await
+                .map_err(thread_error)?;
+            let candidate = admission
+                .commit_context(keys, decision, clock)
+                .await
+                .map_err(thread_error)?;
+            let wire = candidate
+                .events()
+                .iter()
+                .find_map(|event| match event {
+                    cthr::Event::MembershipCommit { bytes } => Some(bytes.clone()),
+                    _ => None,
+                })
+                .ok_or(Error::Authority)?;
+            (candidate, wire)
+        };
+        RoomOrdering::new(self)
+            .order(&ctnd::OrderRequest {
+                room,
+                ordering: frame.ordering,
+                expected: frame.counter,
+                encrypted_commit: wire,
+                companion: vec![],
+            })
+            .await?;
+        let (committed, snapshot, _) = candidate
+            .commit_groups(keys, groups, store, operation, (source, authority), clock)
+            .await
+            .map_err(thread_error)?;
+        Ok(RoomAdmitted {
+            committed,
+            snapshot,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
