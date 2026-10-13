@@ -9,6 +9,7 @@ mod groups;
 mod policy;
 mod profile;
 mod rooms;
+mod threads;
 pub use authority::{BoardAuthority, Contacts, Devices, Seeds};
 pub use cgrd;
 pub use cgrp::{self, GroupView};
@@ -26,11 +27,13 @@ pub use group_invite::{
 };
 pub use groups::{
     CONSENT_SECONDS, GroupOwner, Intent as GroupIntent, PolicyAt, PortFuture, Signed,
-    execute as execute_group_command, execute_intent as execute_group_intent, required_consents,
+    command_members, execute as execute_group_command, execute_intent as execute_group_intent,
+    required_consents,
 };
 pub use policy::{SettingsPolicy, project as project_group_policy};
 pub use profile::{Edit, PublishContext, block_rules, commit_profile};
 pub use rooms::RoomOrdering;
+pub use threads::{ContextFeed, RoomThreads};
 pub use {cnvl, cpfl, cshm};
 /// A bounded locally rechecked page; original owner types carry its evidence.
 pub struct Page {
