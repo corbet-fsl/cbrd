@@ -215,17 +215,16 @@ impl<T: Authority + ?Sized> Authority for Port<'_, T> {
     }
 }
 
-/// Build, sign, prepare and publish one group command as the local member.
-/// `visible` is the semipublic consent: every signer states that members of the
-/// group may see their private profile. Rooms (opening and public) refuse a
-/// command without it.
-pub async fn execute<O: GroupOwner + ?Sized>(
+/// Build, sign and prepare one group command as the local member, without
+/// publishing it: the caller decides how the prepared Candidate becomes durable
+/// (a plain publication, or the ordered external commit of a room join).
+pub async fn prepare_command<O: GroupOwner + ?Sized>(
     owner: &mut O,
     policy: &(impl PolicySource + ?Sized),
     command: Command,
     visible: bool,
     max_groups: usize,
-) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
+) -> Result<(Candidate, Policy, u64)> {
     let actor = owner.member()?;
     let now = owner.now()?;
     let snapshot = owner.snapshot().await?;
@@ -277,6 +276,22 @@ pub async fn execute<O: GroupOwner + ?Sized>(
         now,
         max_groups,
     )?;
+    Ok((candidate, current, now))
+}
+
+/// Build, sign, prepare and publish one group command as the local member.
+/// `visible` is the semipublic consent: every signer states that members of the
+/// group may see their private profile. Rooms (opening and public) refuse a
+/// command without it.
+pub async fn execute<O: GroupOwner + ?Sized>(
+    owner: &mut O,
+    policy: &(impl PolicySource + ?Sized),
+    command: Command,
+    visible: bool,
+    max_groups: usize,
+) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
+    let (candidate, current, now) =
+        prepare_command(owner, policy, command, visible, max_groups).await?;
     let (committed, effects) = owner.publish(candidate, now).await?;
     Ok((committed.views(&current, now)?, effects))
 }
@@ -355,4 +370,16 @@ pub async fn execute_intent<O: GroupOwner + ?Sized>(
 ) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
     let command = intent.command(&owner.member()?);
     execute(owner, policy, command, visible, max_groups).await
+}
+
+/// `prepare_command` for an intent of the local member.
+pub async fn prepare_intent<O: GroupOwner + ?Sized>(
+    owner: &mut O,
+    policy: &(impl PolicySource + ?Sized),
+    intent: Intent,
+    visible: bool,
+    max_groups: usize,
+) -> Result<(Candidate, Policy, u64)> {
+    let command = intent.command(&owner.member()?);
+    prepare_command(owner, policy, command, visible, max_groups).await
 }
