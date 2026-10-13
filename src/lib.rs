@@ -31,7 +31,7 @@ pub use groups::{
 };
 pub use policy::{SettingsPolicy, project as project_group_policy};
 pub use profile::{Edit, PublishContext, block_rules, commit_profile};
-pub use rooms::RoomOrdering;
+pub use rooms::{Pause, RoomFeed, RoomJoinInput, RoomJoined, RoomOrdering};
 /// Attend's Threads and single-owner-transaction ports for a member room join
 /// live with the MLS owner in cthr (tests with real MLS, Groups and Storage).
 pub use cthr::{ContextFeed, JoinParts, JoinSession};

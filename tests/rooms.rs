@@ -48,3 +48,18 @@ async fn without_a_room_pass_neither_presence_nor_ordering_is_sent() {
         Some(Error::Unavailable)
     );
 }
+
+struct Never;
+impl cbrd::Pause for Never {
+    fn pause(&mut self) -> ctnd::PortFuture<'_, ()> {
+        Box::pin(async { panic!("no pass means no second read") })
+    }
+}
+
+#[tokio::test]
+async fn without_a_room_pass_the_context_feed_reads_nothing() {
+    use cthr::ContextFeed;
+    let board = board();
+    let mut feed = cbrd::RoomFeed::new(&board, [1; 16], [3; 16], 1, Never);
+    assert_eq!(feed.context_commit(7).await.err(), Some(Error::Unavailable));
+}
