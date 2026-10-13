@@ -2,7 +2,7 @@
 //! count. Consent is a Groups join with the semipublic statement; MLS and the
 //! key hand-over belong to Threads behind `ctnd::Threads`. Members see only how
 //! many connections are present, never traffic volume or identities.
-use crate::Board;
+use crate::{Board, join_seal};
 use clnk::cmbl;
 use ctnd::{Error, Link, OrderReply, OrderRequest, PortFuture};
 
@@ -71,45 +71,91 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
         self.link.order_room(command, ordering).await
     }
 
-    /// Publish the room's sealed `room_state` for newcomers after this member
-    /// committed an epoch. Returns the ordering counter the state is filed under.
-    pub async fn publish_room_state(
+    /// A newcomer with a valid room pass asks the online members for the room
+    /// state: its fresh ephemeral HPKE key goes on the room's anonymous
+    /// transport. Returns the request's relay sequence, the handle for
+    /// [`Self::room_join_answers`]. Nothing is published in the clear; with no
+    /// member online the request expires and the caller retries.
+    pub async fn request_room_join(
         &self,
         room: cmbl::Id,
-        ciphertext: Vec<u8>,
+        public_key: [u8; 32],
     ) -> Result<u64, clnk::ErrorCode> {
         let outcome = self
             .link
             .execute_room(cmbl::Request {
                 room,
-                operation: state_operation(&room, &ciphertext),
+                operation: state_operation(&room, b"request", &public_key),
                 action: cmbl::Action::Relay {
-                    ciphertext,
-                    kind: cmbl::FrameKind::RoomState,
+                    ciphertext: public_key.to_vec(),
+                    kind: cmbl::FrameKind::JoinRequest,
                 },
             })
             .await?;
-        Ok(outcome.counter)
+        Ok(outcome.through)
     }
 
-    /// The latest published `room_state` and the ordering counter it follows,
-    /// with the room's ordering generation; `None` while no member published one.
-    /// Needs a current room pass. Nothing else of the room is returned.
-    pub async fn room_state(
+    /// Live join requests a member can answer: `(request, ephemeral key)`.
+    pub async fn room_join_requests(
         &self,
         room: cmbl::Id,
-    ) -> Result<Option<(cmbl::Id, u64, Vec<u8>)>, clnk::ErrorCode> {
+    ) -> Result<Vec<(u64, [u8; 32])>, clnk::ErrorCode> {
         let outcome = self
             .link
             .execute_room(cmbl::Request {
                 room,
-                operation: state_operation(&room, b"read"),
+                operation: state_operation(&room, b"requests", &[]),
                 action: cmbl::Action::Read { after: 0 },
             })
             .await?;
-        Ok(state_frame(&outcome, &outcome.ordering)
+        Ok(requests_in(&outcome))
+    }
+
+    /// A member answers request `to` with the room state sealed to the key in
+    /// the request (see [`join_seal`]).
+    pub async fn answer_room_join(
+        &self,
+        room: cmbl::Id,
+        to: u64,
+        sealed: Vec<u8>,
+    ) -> Result<(), clnk::ErrorCode> {
+        self.link
+            .execute_room(cmbl::Request {
+                room,
+                operation: state_operation(&room, b"answer", &sealed),
+                action: cmbl::Action::Relay {
+                    ciphertext: sealed,
+                    kind: cmbl::FrameKind::RoomState { to },
+                },
+            })
+            .await?;
+        Ok(())
+    }
+
+    /// The sealed answers so far to request `to`: `(ordering generation,
+    /// counter, sealed state)`. Several members may answer; the caller opens
+    /// each and Threads verifies the evidence before any import.
+    pub async fn room_join_answers(
+        &self,
+        room: cmbl::Id,
+        to: u64,
+    ) -> Result<Vec<(cmbl::Id, u64, Vec<u8>)>, clnk::ErrorCode> {
+        let outcome = self
+            .link
+            .execute_room(cmbl::Request {
+                room,
+                operation: state_operation(&room, b"answers", &to.to_be_bytes()),
+                action: cmbl::Action::Read {
+                    after: to.saturating_sub(1),
+                },
+            })
+            .await?;
+        let ordering = outcome.ordering;
+        Ok(answers_in(&outcome, &ordering, to)
             .map_err(|_| clnk::ErrorCode::Reconcile)?
-            .map(|(counter, sealed)| (outcome.ordering, counter, sealed)))
+            .into_iter()
+            .map(|(counter, sealed)| (ordering, counter, sealed))
+            .collect())
     }
 
     /// How many connections are present in a room right now. Nothing else of the
@@ -169,32 +215,37 @@ fn context_frame(
         .map(|frame| frame.ciphertext.clone()))
 }
 
-/// The frame kind `room_state`: a current member's [`cthr::ParentEvidence`]
-/// (MLS GroupInfo, canonical state, ratchet tree) for newcomers. The member that
-/// commits an epoch publishes it on the room's anonymous transport right after;
-/// the room keeps only the latest. Joiners read it with a valid room pass.
-/// cbrd moves opaque bytes: the evidence includes the ratchet tree, which the
-/// blind room service must never see in the clear, so sealing and opening
-/// belong to the caller (the key a joiner without MLS state can derive is an
-/// open design decision). Threads verifies the evidence before any import.
-fn state_frame(
+/// Join requests in a read, oldest first: `(relay sequence, ephemeral key)`.
+fn requests_in(outcome: &cmbl::Outcome) -> Vec<(u64, [u8; 32])> {
+    outcome
+        .frames
+        .iter()
+        .filter(|frame| frame.kind == cmbl::FrameKind::JoinRequest)
+        .filter_map(|frame| Some((frame.sequence, frame.ciphertext.as_slice().try_into().ok()?)))
+        .collect()
+}
+
+/// The sealed answers to request `to`, with the ordering counter each follows.
+fn answers_in(
     outcome: &cmbl::Outcome,
     ordering: &cmbl::Id,
-) -> Result<Option<(u64, Vec<u8>)>, Error> {
+    to: u64,
+) -> Result<Vec<(u64, Vec<u8>)>, Error> {
     if &outcome.ordering != ordering {
         return Err(Error::Reconcile);
     }
     Ok(outcome
         .frames
         .iter()
-        .rev()
-        .find(|frame| frame.kind == cmbl::FrameKind::RoomState)
-        .map(|frame| (frame.counter, frame.ciphertext.clone())))
+        .filter(|frame| frame.kind == (cmbl::FrameKind::RoomState { to }))
+        .map(|frame| (frame.counter, frame.ciphertext.clone()))
+        .collect())
 }
 
-fn state_operation(room: &cmbl::Id, bytes: &[u8]) -> cmbl::Id {
+fn state_operation(room: &cmbl::Id, tag: &[u8], bytes: &[u8]) -> cmbl::Id {
     let mut hash = blake3::Hasher::new();
-    hash.update(b"cbrd.room.state.v1\0");
+    hash.update(b"cbrd.room.join.v1\0");
+    hash.update(tag);
     hash.update(room);
     hash.update(bytes);
     let mut id = [0; 16];
@@ -423,18 +474,21 @@ mod tests {
     #[test]
     fn the_context_commit_is_never_a_room_state_frame() {
         let mut room = outcome([1; 16], &[8, 8]);
-        room.frames[0].kind = cmbl::FrameKind::RoomState;
+        room.frames[0].kind = cmbl::FrameKind::RoomState { to: 1 };
         assert_eq!(context_frame(&room, &[1; 16], 8), Ok(Some(vec![1])));
     }
 
     #[test]
-    fn the_latest_state_frame_is_the_room_state() {
-        let mut room = outcome([1; 16], &[7, 8]);
-        assert_eq!(state_frame(&room, &[1; 16]), Ok(None));
-        room.frames[0].kind = cmbl::FrameKind::RoomState;
-        assert_eq!(state_frame(&room, &[1; 16]), Ok(Some((7, vec![0]))));
-        room.frames[1].kind = cmbl::FrameKind::RoomState;
-        assert_eq!(state_frame(&room, &[1; 16]), Ok(Some((8, vec![1]))));
-        assert_eq!(state_frame(&room, &[9; 16]), Err(Error::Reconcile));
+    fn requests_and_their_answers_are_picked_by_kind_and_target() {
+        let mut room = outcome([1; 16], &[7, 7, 8, 8]);
+        room.frames[0].kind = cmbl::FrameKind::JoinRequest;
+        room.frames[0].ciphertext = vec![5; 32];
+        room.frames[1].kind = cmbl::FrameKind::JoinRequest; // wrong length: ignored
+        room.frames[2].kind = cmbl::FrameKind::RoomState { to: 1 };
+        room.frames[3].kind = cmbl::FrameKind::RoomState { to: 2 };
+        assert_eq!(requests_in(&room), vec![(1, [5; 32])]);
+        assert_eq!(answers_in(&room, &[1; 16], 1), Ok(vec![(8, vec![2])]));
+        assert_eq!(answers_in(&room, &[1; 16], 9), Ok(vec![]));
+        assert_eq!(answers_in(&room, &[9; 16], 1), Err(Error::Reconcile));
     }
 }

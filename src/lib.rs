@@ -6,6 +6,7 @@ mod committed;
 mod exchange;
 mod group_invite;
 mod groups;
+pub mod join_seal;
 mod policy;
 mod profile;
 mod rooms;
@@ -16,6 +17,9 @@ pub use clnk::{self, Challenge, Prepared, cfrm};
 pub use committed::{ReadContext, ReadPolicy};
 pub use crbk;
 pub use csrh::{Discovery, Input, Verification, ViewLimits};
+/// Attend's Threads and single-owner-transaction ports for a member room join
+/// live with the MLS owner in cthr (tests with real MLS, Groups and Storage).
+pub use cthr::{ContextFeed, JoinParts, JoinSession};
 pub use exchange::{
     Answer, ExchangeContext, MAX_MESSAGE_BYTES, Notice, Opened, PEER_KEY_OWNER, Reply, Request,
     peer_key_slot,
@@ -26,15 +30,12 @@ pub use group_invite::{
 };
 pub use groups::{
     CONSENT_SECONDS, GroupOwner, Intent as GroupIntent, PolicyAt, PortFuture, Published, Signed,
-    command_members, created_group, execute as execute_group_command, execute_intent as execute_group_intent,
-    required_consents,
+    command_members, created_group, execute as execute_group_command,
+    execute_intent as execute_group_intent, required_consents,
 };
 pub use policy::{SettingsPolicy, project as project_group_policy};
 pub use profile::{Edit, PublishContext, block_rules, commit_profile};
 pub use rooms::{Pause, RoomFeed, RoomJoinInput, RoomJoined, RoomOrdering};
-/// Attend's Threads and single-owner-transaction ports for a member room join
-/// live with the MLS owner in cthr (tests with real MLS, Groups and Storage).
-pub use cthr::{ContextFeed, JoinParts, JoinSession};
 pub use {cnvl, cpfl, cshm};
 /// A bounded locally rechecked page; original owner types carry its evidence.
 pub struct Page {
