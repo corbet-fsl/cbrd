@@ -15,6 +15,7 @@ fn operation(request: &OrderRequest) -> cmbl::Id {
     hash.update(&request.ordering);
     hash.update(&request.expected.to_be_bytes());
     hash.update(&request.encrypted_commit);
+    hash.update(&request.companion);
     let mut id = [0; 16];
     id.copy_from_slice(&hash.finalize().as_bytes()[..16]);
     id
@@ -39,7 +40,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Link for RoomOrdering<'_, T, R> {
                 operation: operation(request),
                 action: cmbl::Action::Order {
                     expected: request.expected,
-                    ciphertext: request.encrypted_commit.clone(),
+                    ciphertext: ctnd::pack_ordered(&request.encrypted_commit, &request.companion),
                 },
             };
             match self.board.order_room(command, request.ordering).await {
@@ -158,6 +159,28 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             .collect())
     }
 
+    /// The newcomers' ordered external commits after relay sequence `after`,
+    /// each with its authenticated companion (the signed Groups `Join` request):
+    /// what an admitting member needs. Frames without a companion are not joins.
+    pub async fn room_joins(
+        &self,
+        room: cmbl::Id,
+        after: u64,
+    ) -> Result<JoinsRead, clnk::ErrorCode> {
+        let outcome = self
+            .link
+            .execute_room(cmbl::Request {
+                room,
+                operation: state_operation(&room, b"joins", &after.to_be_bytes()),
+                action: cmbl::Action::Read { after },
+            })
+            .await?;
+        Ok(JoinsRead {
+            joins: joins_in(&outcome),
+            through: outcome.through,
+        })
+    }
+
     /// How many connections are present in a room right now. Nothing else of the
     /// room crosses this call: no member list, no traffic, no frames.
     pub async fn here_now(
@@ -213,6 +236,38 @@ fn context_frame(
         .iter()
         .find(|frame| frame.kind == cmbl::FrameKind::Message && frame.counter == wanted)
         .map(|frame| frame.ciphertext.clone()))
+}
+
+/// A newcomer's ordered external commit with its companion.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JoinFrame {
+    pub ordering: cmbl::Id,
+    pub counter: u64,
+    pub commit: Vec<u8>,
+    pub companion: Vec<u8>,
+}
+/// Joins found in one read and the relay sequence the read reached.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JoinsRead {
+    pub joins: Vec<JoinFrame>,
+    pub through: u64,
+}
+
+fn joins_in(outcome: &cmbl::Outcome) -> Vec<JoinFrame> {
+    outcome
+        .frames
+        .iter()
+        .filter(|frame| frame.kind == cmbl::FrameKind::Message)
+        .filter_map(|frame| {
+            let (commit, companion) = ctnd::unpack_ordered(&frame.ciphertext)?;
+            (!companion.is_empty()).then(|| JoinFrame {
+                ordering: outcome.ordering,
+                counter: frame.counter,
+                commit: commit.to_vec(),
+                companion: companion.to_vec(),
+            })
+        })
+        .collect()
 }
 
 /// Join requests in a read, oldest first: `(relay sequence, ephemeral key)`.
@@ -335,6 +390,8 @@ pub struct RoomJoinInput<'a, K, B: cwst::backend::Backend, S, A, C, P> {
     pub authority: &'a A,
     /// Encrypted to the room after the join: profile keys and the like.
     pub handover: Vec<Vec<u8>>,
+    /// The signed Groups `Join` request the external commit authenticates.
+    pub companion: Vec<u8>,
     pub operation: [u8; 32],
     /// Reads of room traffic while waiting for the canonical context.
     pub attempts: u8,
@@ -380,6 +437,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             source,
             authority,
             handover,
+            companion,
             operation,
             attempts,
             pause,
@@ -409,6 +467,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             ordering: state.ordering,
             counter: state.counter,
             handover,
+            companion,
             operation,
         });
         session.begin(attend, member, room, source, now)?;
@@ -454,6 +513,25 @@ mod tests {
                 })
                 .collect(),
         }
+    }
+
+    #[test]
+    fn only_frames_with_a_companion_are_joins() {
+        let mut room = outcome([4; 16], &[7, 8, 9]);
+        room.frames[1].ciphertext = ctnd::pack_ordered(&[0, 1, 2], &[9, 9]);
+        // A malformed frame that claims the companion magic is never a join.
+        let mut broken = ctnd::pack_ordered(&[0, 1, 2], &[9]);
+        broken.pop();
+        room.frames[2].ciphertext = broken;
+        assert_eq!(
+            joins_in(&room),
+            vec![JoinFrame {
+                ordering: [4; 16],
+                counter: 8,
+                commit: vec![0, 1, 2],
+                companion: vec![9, 9],
+            }]
+        );
     }
 
     #[test]

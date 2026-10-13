@@ -42,6 +42,7 @@ async fn without_a_room_pass_neither_presence_nor_ordering_is_sent() {
         ordering: [3; 16],
         expected: 0,
         encrypted_commit: vec![1, 2, 3],
+        companion: vec![],
     };
     assert_eq!(
         RoomOrdering::new(&board).order(&request).await.err(),

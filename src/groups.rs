@@ -217,14 +217,15 @@ impl<T: Authority + ?Sized> Authority for Port<'_, T> {
 
 /// Build, sign and prepare one group command as the local member, without
 /// publishing it: the caller decides how the prepared Candidate becomes durable
-/// (a plain publication, or the ordered external commit of a room join).
+/// (a plain publication, or the ordered external commit of a room join, which
+/// also needs the signed `Request` as its companion).
 pub async fn prepare_command<O: GroupOwner + ?Sized>(
     owner: &mut O,
     policy: &(impl PolicySource + ?Sized),
     command: Command,
     visible: bool,
     max_groups: usize,
-) -> Result<(Candidate, Policy, u64)> {
+) -> Result<(Candidate, Policy, u64, Request)> {
     let actor = owner.member()?;
     let now = owner.now()?;
     let snapshot = owner.snapshot().await?;
@@ -276,7 +277,7 @@ pub async fn prepare_command<O: GroupOwner + ?Sized>(
         now,
         max_groups,
     )?;
-    Ok((candidate, current, now))
+    Ok((candidate, current, now, request))
 }
 
 /// Build, sign, prepare and publish one group command as the local member.
@@ -290,7 +291,7 @@ pub async fn execute<O: GroupOwner + ?Sized>(
     visible: bool,
     max_groups: usize,
 ) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
-    let (candidate, current, now) =
+    let (candidate, current, now, _) =
         prepare_command(owner, policy, command, visible, max_groups).await?;
     let (committed, effects) = owner.publish(candidate, now).await?;
     Ok((committed.views(&current, now)?, effects))
@@ -379,7 +380,7 @@ pub async fn prepare_intent<O: GroupOwner + ?Sized>(
     intent: Intent,
     visible: bool,
     max_groups: usize,
-) -> Result<(Candidate, Policy, u64)> {
+) -> Result<(Candidate, Policy, u64, Request)> {
     let command = intent.command(&owner.member()?);
     prepare_command(owner, policy, command, visible, max_groups).await
 }
