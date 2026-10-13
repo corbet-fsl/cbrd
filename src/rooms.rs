@@ -492,16 +492,16 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
 }
 
 /// What a newcomer's external commit carries as its authenticated companion:
-/// its signed Groups `Join` request and the lineage-read handle of its OWN
-/// certified lineage. The handle is only a locator: an admitting member reads
-/// the lineage through it and believes nothing but the Charter-verified record
-/// bound to the pseudonym the request names (a substituted handle reads another
-/// member's record, or none, and the admission is refused).
+/// its signed Groups `Join` request. The newcomer's consent inside it carries the
+/// lineage-read handle of its OWN certified lineage (covered by the signature).
+/// The handle is only a locator: an admitting member reads the lineage through
+/// it and believes nothing but the Charter-verified record bound to the
+/// pseudonym the request names (a substituted handle reads another member's
+/// record, or none, and the admission is refused).
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RoomCompanion {
     pub request: cgrp::Request,
-    pub handle: Vec<u8>,
 }
 
 impl RoomCompanion {

@@ -187,18 +187,9 @@ impl Owner {
     }
 }
 impl GroupOwner for Owner {
-    fn handles<'a>(
-        &'a mut self,
-        members: &'a BTreeSet<String>,
-    ) -> PortFuture<'a, std::collections::BTreeMap<String, Vec<u8>>> {
-        Box::pin(async move {
-            Ok(self
-                .held
-                .iter()
-                .filter(|(member, _)| members.contains(*member))
-                .map(|(member, handle)| (member.clone(), handle.clone()))
-                .collect())
-        })
+    fn own_handle(&mut self) -> PortFuture<'_, Vec<u8>> {
+        let handle = self.held.get(&self.me).cloned().unwrap_or_default();
+        Box::pin(async move { Ok(handle) })
     }
     fn provide_handles(&mut self, handles: std::collections::BTreeMap<String, Vec<u8>>) {
         self.provided = handles;
@@ -437,6 +428,7 @@ fn the_authority_adapter_checks_expiry_and_leaves_parent_imports_refused() {
         profile_visibility: false,
         valid_until: 10,
         key_package: vec![],
+        lineage_handle: vec![],
         signature: vec![],
         authority: key("m0").verifying_key().to_bytes().to_vec(),
     };
@@ -741,7 +733,7 @@ fn a_swapped_key_package_breaks_the_consent_and_the_group_is_not_created() {
 }
 
 #[test]
-fn the_inviter_hands_out_locators_for_co_members_and_the_joiner_keeps_only_named_ones() {
+fn every_signer_attaches_its_own_locator_and_the_joiner_reads_them_from_the_consents() {
     let policy = PolicyAt::new(COMMUNITY, policy());
     let mut m0 = Owner::new("m0", false, only("m0"));
     let mut m1 = Owner::new("m1", false, only("m1"));
@@ -749,9 +741,9 @@ fn the_inviter_hands_out_locators_for_co_members_and_the_joiner_keeps_only_named
     for owner in [&mut m0, &mut m1, &mut m2] {
         owner.mls = true;
     }
-    m0.held.insert("m1".into(), b"handle-1".to_vec());
-    m0.held.insert("m2".into(), b"handle-2".to_vec());
-    m0.held.insert("stranger".into(), b"handle-x".to_vec());
+    m0.held.insert("m0".into(), b"handle-0".to_vec());
+    m1.held.insert("m1".into(), b"handle-1".to_vec());
+    m2.held.insert("m2".into(), b"handle-2".to_vec());
     let mut proposal = circle_proposal(&mut m0, 1, names(0, 3));
     let text = proposal.invitation().to_text().unwrap();
     let mut invitations = vec![];
@@ -768,11 +760,10 @@ fn the_inviter_hands_out_locators_for_co_members_and_the_joiner_keeps_only_named
     .welcome
     .unwrap();
     block(invitations[1].join(&mut m2, &policy, "m0", welcome, 128)).unwrap();
-    // m2 got the locator of m1 (a co-member), none for itself or a stranger.
-    assert_eq!(
-        m2.provided.get("m1").map(Vec::as_slice),
-        Some(&b"handle-1"[..])
-    );
-    assert!(!m2.provided.contains_key("m2"));
+    // m2 got the locators the others attached to their own consents (and its
+    // own); nobody else can supply one.
+    for (member, handle) in [("m0", &b"handle-0"[..]), ("m1", &b"handle-1"[..])] {
+        assert_eq!(m2.provided.get(member).map(Vec::as_slice), Some(handle));
+    }
     assert!(!m2.provided.contains_key("stranger"));
 }

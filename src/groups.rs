@@ -71,17 +71,14 @@ pub trait GroupOwner {
         candidate: Candidate,
         now: u64,
     ) -> PortFuture<'_, (Snapshot, Vec<CommittedEffect>)>;
-    /// The lineage-read handles this member's own contacts journal holds for
-    /// `members`. A handle is only a locator: what it yields is trusted solely
-    /// through Charter verification and its binding to the asked member.
-    fn handles<'a>(
-        &'a mut self,
-        _members: &'a BTreeSet<String>,
-    ) -> PortFuture<'a, std::collections::BTreeMap<String, Vec<u8>>> {
-        Box::pin(async { Ok(Default::default()) })
+    /// This member's OWN lineage-read handle, attached to every consent it
+    /// signs (covered by the signature). Owners that cannot read a lineage
+    /// keep the default (no handle: nobody can then verify the consent).
+    fn own_handle(&mut self) -> PortFuture<'_, Vec<u8>> {
+        Box::pin(async { Ok(Vec::new()) })
     }
-    /// Locators received with an invitation for members this device has no
-    /// contact with. A handle from the own journal always takes precedence.
+    /// The handles the signers attached to their own consents. They take
+    /// precedence over the own journal: they are the signer's current locator.
     fn provide_handles(&mut self, _handles: std::collections::BTreeMap<String, Vec<u8>>) {}
     /// A fresh MLS key package this member makes for the group `group` that
     /// operation `operation` creates. Its private half stays in the owner's
@@ -255,6 +252,7 @@ pub async fn prepare_command<O: GroupOwner + ?Sized>(
             profile_visibility: visible,
             valid_until: now.saturating_add(CONSENT_SECONDS),
             key_package: vec![],
+            lineage_handle: vec![],
             signature: vec![],
             authority: vec![],
         };
