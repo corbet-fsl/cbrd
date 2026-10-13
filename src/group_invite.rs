@@ -74,6 +74,10 @@ impl Proposal {
     pub fn declined(&self) -> bool {
         self.declined
     }
+    /// After this second no answer to the proposal can be admitted.
+    pub fn expires_at(&self) -> u64 {
+        self.request.effective_at.saturating_add(CONSENT_SECONDS)
+    }
     pub fn complete(&self) -> bool {
         self.awaiting.is_empty() && !self.declined
     }
@@ -213,6 +217,10 @@ impl Invitation {
     }
     pub fn actor(&self) -> &str {
         &self.request.actor
+    }
+    /// After this second the member's consent would no longer be admitted.
+    pub fn expires_at(&self) -> u64 {
+        self.request.effective_at.saturating_add(CONSENT_SECONDS)
     }
 
     /// Check an invitation that arrived in the conversation with `from`. It is
