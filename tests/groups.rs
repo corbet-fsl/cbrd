@@ -222,6 +222,7 @@ impl GroupOwner for Owner {
     fn publish_welcome<'a>(
         &'a mut self,
         candidate: Candidate,
+        _group: Id,
         welcome: &'a [u8],
         _: &'a dyn cgrp::PolicySource,
         now: u64,

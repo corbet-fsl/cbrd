@@ -103,6 +103,7 @@ pub trait GroupOwner {
     fn publish_welcome<'a>(
         &'a mut self,
         _candidate: Candidate,
+        _group: Id,
         _welcome: &'a [u8],
         _policy: &'a dyn PolicySource,
         _now: u64,

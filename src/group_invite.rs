@@ -362,8 +362,9 @@ impl Invitation {
             now,
             max_groups,
         )?;
+        let group = created_group(&request.command).ok_or(Error::Invalid)?;
         let (committed, effects) = owner
-            .publish_welcome(candidate, &welcome, &Port(policy), now)
+            .publish_welcome(candidate, group, &welcome, &Port(policy), now)
             .await?;
         Ok((committed.views(&current, now)?, effects))
     }
