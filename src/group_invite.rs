@@ -6,7 +6,9 @@
 //! which still re-checks contacts, standing, devices and the policy. Groups
 //! stay immutable: a changed membership is always a fork the members consent
 //! to; nobody can add or remove another member.
-use crate::groups::{CONSENT_SECONDS, GroupOwner, Port, Result, required_consents};
+use crate::groups::{
+    CONSENT_SECONDS, GroupOwner, Port, Result, command_members, required_consents,
+};
 use cgrp::{Command, CommittedEffect, Consent, Error, GroupView, Id, PolicySource, Request};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -52,6 +54,7 @@ impl Message {
 }
 
 /// The actor's side: a request waiting for the other members' consents.
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Proposal {
     request: Request,
     epoch: u64,
@@ -188,6 +191,12 @@ pub async fn commit<O: GroupOwner + ?Sized>(
     let now = owner.now()?;
     let snapshot = owner.snapshot().await?;
     let current = policy.current(snapshot.community(), now)?;
+    owner
+        .refresh(
+            &command_members(&proposal.request.command),
+            &required_consents(&proposal.request.command, &proposal.request.actor),
+        )
+        .await?;
     let candidate = cgrp::prepare(
         &snapshot,
         &proposal.request,
@@ -201,6 +210,7 @@ pub async fn commit<O: GroupOwner + ?Sized>(
 }
 
 /// The invitee's side: a verified request waiting for the member's own answer.
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Invitation {
     request: Request,
     community: String,
@@ -249,6 +259,9 @@ impl Invitation {
         {
             return Err(Error::Authority);
         }
+        owner
+            .refresh(&BTreeSet::from([from.to_owned()]), &BTreeSet::new())
+            .await?;
         owner
             .authority()
             .contact(snapshot.community(), &member, from, now)?;
@@ -326,4 +339,23 @@ async fn sign<O: GroupOwner + ?Sized>(
     consent.signature = signed.signature;
     consent.authority = signed.authority;
     Ok(consent)
+}
+
+impl Proposal {
+    /// Durable form for the owner's encrypted records.
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        serde_json::to_vec(self).map_err(|_| Error::Invalid)
+    }
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        serde_json::from_slice(bytes).map_err(|_| Error::Invalid)
+    }
+}
+
+impl Invitation {
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        serde_json::to_vec(self).map_err(|_| Error::Invalid)
+    }
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        serde_json::from_slice(bytes).map_err(|_| Error::Invalid)
+    }
 }

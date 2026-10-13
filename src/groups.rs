@@ -38,6 +38,17 @@ pub trait GroupOwner {
     /// A fresh operation identifier, never reused.
     fn operation(&mut self) -> Result<Id>;
     fn snapshot(&mut self) -> PortFuture<'_, Snapshot>;
+    /// Called before Groups asks the synchronous `authority`: load the current
+    /// contact relations of `contacts` and the current device sets of `devices`
+    /// (fresh reads, never stale values). Whatever cannot be loaded must make
+    /// `authority` refuse. Owners whose authority needs no loading keep the default.
+    fn refresh<'a>(
+        &'a mut self,
+        _contacts: &'a BTreeSet<String>,
+        _devices: &'a BTreeSet<String>,
+    ) -> PortFuture<'a, ()> {
+        Box::pin(async { Ok(()) })
+    }
     fn sign_consent<'a>(
         &'a mut self,
         member: &'a str,
@@ -62,6 +73,17 @@ pub fn required_consents(command: &Command, actor: &str) -> BTreeSet<String> {
         } => vouches.iter().cloned().chain([member.clone()]).collect(),
         Command::Leave { .. } | Command::Describe { .. } => BTreeSet::from([actor.to_owned()]),
         Command::Tick => BTreeSet::new(),
+    }
+}
+
+/// Every member a command names, whom the actor must hold as contacts.
+pub fn command_members(command: &Command) -> BTreeSet<String> {
+    match command {
+        Command::Create { members, .. } | Command::Fork { members, .. } => members.clone(),
+        Command::Join {
+            member, vouches, ..
+        } => vouches.iter().cloned().chain([member.clone()]).collect(),
+        _ => BTreeSet::new(),
     }
 }
 
@@ -141,6 +163,12 @@ pub async fn execute<O: GroupOwner + ?Sized>(
         consents: vec![],
     };
     let digest = request.command_digest()?;
+    owner
+        .refresh(
+            &command_members(&request.command),
+            &required_consents(&request.command, &actor),
+        )
+        .await?;
     for member in required_consents(&request.command, &actor) {
         let mut consent = Consent {
             community: snapshot.community().to_owned(),
