@@ -763,6 +763,7 @@ dependencies = [
  "cxch",
  "ed25519-dalek 3.0.0",
  "futures-executor",
+ "hpke",
  "schemars",
  "serde",
  "serde_json",
@@ -1107,7 +1108,7 @@ dependencies = [
 [[package]]
 name = "clnk"
 version = "0.1.0"
-source = "git+https://git.corbet.ch/corbet-foss/clnk.git?branch=v01#b5bf410ae9f59752cc7a400df02f92499204017d"
+source = "git+https://git.corbet.ch/corbet-foss/clnk.git?branch=v01#bdbb57503cd53dd36a2f3e600f7eddc228c4cd13"
 dependencies = [
  "cfrm",
  "cmbl",
@@ -1131,7 +1132,7 @@ dependencies = [
 [[package]]
 name = "cmbl"
 version = "0.1.0"
-source = "git+https://git.corbet.ch/corbet-foss/cmbl.git?branch=v01#1f35359af7c4874a8773ebc756579088f86131e1"
+source = "git+https://git.corbet.ch/corbet-foss/cmbl.git?branch=v01#a1b7c7341a50d3d19afc4b08642b8e33f466890e"
 dependencies = [
  "blake3",
  "blind-rsa-signatures",
