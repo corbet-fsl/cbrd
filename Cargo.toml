@@ -20,7 +20,7 @@ ohttp = ["clnk/ohttp"]
 clnk = { git = "https://git.corbet.ch/corbet-foss/clnk.git", branch = "v01", default-features = false }
 csrh = { git = "https://git.corbet.ch/corbet-foss/csrh.git", branch = "main" }
 cxch = { git = "https://git.corbet.ch/corbet-foss/cxch.git", branch = "main" }
-cgrp = { git = "https://git.corbet.ch/corbet-foss/cgrp.git", branch = "v01" }
+cgrp = { git = "https://git.corbet.ch/corbet-foss/cgrp.git", branch = "main" }
 ctnd = { git = "https://git.corbet.ch/corbet-foss/ctnd.git", branch = "main" }
 cthr = { git = "https://git.corbet.ch/corbet-foss/cthr.git", branch = "main" }
 cnvl = { git = "https://git.corbet.ch/corbet-foss/cnvl.git", branch = "v01" }
