@@ -79,11 +79,7 @@ impl Page {
     /// "vouched for by <handle>" for one card, only when its endorsement verifies against a
     /// sponsor this page itself proves (the requester or another verified owner). A sponsor
     /// that is not in the page shows nothing: absence here is not evidence of departure.
-    fn vouched_line(
-        &self,
-        pair: &csrh::CheckedPair,
-        departed: &dyn Fn(&str) -> Option<Vec<[u8; 32]>>,
-    ) -> Option<String> {
+    fn vouched_line(&self, pair: &csrh::CheckedPair) -> Option<String> {
         let owner = pair.owner();
         let endorsement = owner.vouched_by()?;
         let handle = cvch::link::Endorsement::from_bytes(endorsement).ok()?.handle;
@@ -91,10 +87,14 @@ impl Page {
             .chain(self.pairs.iter().flat_map(|p| [p.requester(), p.owner()]))
             .map(|publication| publication.credential())
             .find(|credential| credential.handle == handle);
-        let lineage = departed(&handle);
+        // The snapshot the profile carries, verified against the community key ring as of
+        // the time it was received. It proves who the sponsor was, not that they still are.
+        let lineage = owner
+            .lineage()
+            .filter(|l| l.departed && l.sponsor.handle == handle);
         let sponsor = match (&current, &lineage) {
             (Some(current), _) => Sponsor::Current(current),
-            (None, Some(devices)) => Sponsor::Departed(devices),
+            (None, Some(lineage)) => Sponsor::Departed(&lineage.sponsor.devices),
             (None, None) => Sponsor::Unknown,
         };
         vouched_by_line(
@@ -105,22 +105,13 @@ impl Page {
         )
     }
     pub fn discovery(&self) -> DiscoveryPage {
-        self.discovery_with_departed(&|_| None)
-    }
-    /// As [`Page::discovery`], with the community's retained lineage of departed sponsors
-    /// (handle to the devices it held at admission) so a departed sponsor reads
-    /// "a former member". Without a roster such a card shows no line.
-    pub fn discovery_with_departed(
-        &self,
-        departed: &dyn Fn(&str) -> Option<Vec<[u8; 32]>>,
-    ) -> DiscoveryPage {
         DiscoveryPage {
             entries: self
                 .pairs
                 .iter()
                 .filter_map(|pair| {
                     let mut entry = pair.discovery()?;
-                    entry.vouched_by = self.vouched_line(pair, departed);
+                    entry.vouched_by = self.vouched_line(pair);
                     Some(entry)
                 })
                 .collect(),

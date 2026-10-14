@@ -23,6 +23,9 @@ pub struct Edit {
     /// `voucher.sponsor_visible` on, and dropped from the next publication when
     /// they do not (one-way: it never appears for a member who has none).
     pub vouched_by: Option<Vec<u8>>,
+    /// The sponsor's credential as this device received it (`cvch::link::Snapshot` wire
+    /// form): lineage evidence published beside the endorsement, dropped with it.
+    pub vouched_snapshot: Option<Vec<u8>>,
 }
 
 /// Settings key that lets the sponsor's handle appear on a member's profile.
@@ -187,6 +190,9 @@ impl<T: clnk::Transport, R> Board<T, R> {
         // signature is verified for this community and member inside Profile. The sponsor's
         // CURRENT device roster is not held here: the publisher accepts exactly the device
         // that signed, and the verifier (Forum) enforces the roster with its own lookup.
+        draft
+            .set_vouched_snapshot(edit.vouched_snapshot.filter(|_| vouched_by.is_some()))
+            .map_err(|_| Error::Rejected)?;
         let held = vouched_by
             .as_deref()
             .and_then(|wire| cvch::link::Endorsement::from_bytes(wire).ok());
