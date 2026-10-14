@@ -2,11 +2,11 @@
 //! count. Consent is a Groups join with the semipublic statement; MLS and the
 //! key hand-over belong to Threads behind `ctnd::Threads`. Members see only how
 //! many connections are present, never traffic volume or identities.
-use crate::Board;
+use crate::{Board, TransportKey};
 use clnk::cmbl;
 use ctnd::{Error, Link, OrderReply, OrderRequest, PortFuture};
 
-fn operation(request: &OrderRequest) -> cmbl::Id {
+fn operation(request: &OrderRequest, wrapped: &[u8]) -> cmbl::Id {
     // Deterministic, so an exact retry of the same order reaches Assembly's
     // original operation receipt instead of applying the commit twice.
     let mut hash = blake3::Hasher::new();
@@ -14,8 +14,7 @@ fn operation(request: &OrderRequest) -> cmbl::Id {
     hash.update(&request.room);
     hash.update(&request.ordering);
     hash.update(&request.expected.to_be_bytes());
-    hash.update(&request.encrypted_commit);
-    hash.update(&request.companion);
+    hash.update(wrapped);
     let mut id = [0; 16];
     id.copy_from_slice(&hash.finalize().as_bytes()[..16]);
     id
@@ -26,21 +25,31 @@ fn operation(request: &OrderRequest) -> cmbl::Id {
 /// reached the room is `Reconcile`, never a retry instruction.
 pub struct RoomOrdering<'a, T, R> {
     board: &'a Board<T, clnk::AnonymousRooms<R>>,
+    key: &'a TransportKey,
 }
 impl<'a, T: clnk::Transport, R: clnk::Transport> RoomOrdering<'a, T, R> {
-    pub fn new(board: &'a Board<T, clnk::AnonymousRooms<R>>) -> Self {
-        Self { board }
+    /// `key` is the room's epoch-derived transport key: the ordering server
+    /// relays the join frames and sees only their ciphertext.
+    pub fn new(board: &'a Board<T, clnk::AnonymousRooms<R>>, key: &'a TransportKey) -> Self {
+        Self { board, key }
     }
 }
 impl<T: clnk::Transport, R: clnk::Transport> Link for RoomOrdering<'_, T, R> {
     fn order<'a>(&'a mut self, request: &'a OrderRequest) -> PortFuture<'a, OrderReply> {
         Box::pin(async move {
+            let wrapped = self
+                .key
+                .wrap(
+                    &request.room,
+                    &ctnd::pack_ordered(&request.encrypted_commit, &request.companion),
+                )
+                .ok_or(Error::Unavailable)?;
             let command = cmbl::Request {
                 room: request.room,
-                operation: operation(request),
+                operation: operation(request, &wrapped),
                 action: cmbl::Action::Order {
                     expected: request.expected,
-                    ciphertext: ctnd::pack_ordered(&request.encrypted_commit, &request.companion),
+                    ciphertext: wrapped,
                 },
             };
             match self.board.order_room(command, request.ordering).await {
@@ -166,6 +175,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
         &self,
         room: cmbl::Id,
         after: u64,
+        key: &TransportKey,
     ) -> Result<JoinsRead, clnk::ErrorCode> {
         let outcome = self
             .link
@@ -176,7 +186,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             })
             .await?;
         Ok(JoinsRead {
-            joins: joins_in(&outcome),
+            joins: joins_in(&outcome, &room, key),
             through: outcome.through,
         })
     }
@@ -227,6 +237,8 @@ fn context_frame(
     outcome: &cmbl::Outcome,
     ordering: &cmbl::Id,
     wanted: u64,
+    room: &cmbl::Id,
+    key: &TransportKey,
 ) -> Result<Option<Vec<u8>>, Error> {
     if &outcome.ordering != ordering {
         return Err(Error::Reconcile);
@@ -234,8 +246,8 @@ fn context_frame(
     Ok(outcome
         .frames
         .iter()
-        .find(|frame| frame.kind == cmbl::FrameKind::Message && frame.counter == wanted)
-        .map(|frame| frame.ciphertext.clone()))
+        .filter(|frame| frame.kind == cmbl::FrameKind::Message && frame.counter == wanted)
+        .find_map(|frame| key.unwrap(room, &frame.ciphertext)))
 }
 
 /// A newcomer's ordered external commit with its companion.
@@ -253,13 +265,14 @@ pub struct JoinsRead {
     pub through: u64,
 }
 
-fn joins_in(outcome: &cmbl::Outcome) -> Vec<JoinFrame> {
+fn joins_in(outcome: &cmbl::Outcome, room: &cmbl::Id, key: &TransportKey) -> Vec<JoinFrame> {
     outcome
         .frames
         .iter()
         .filter(|frame| frame.kind == cmbl::FrameKind::Message)
         .filter_map(|frame| {
-            let (commit, companion) = ctnd::unpack_ordered(&frame.ciphertext)?;
+            let plain = key.unwrap(room, &frame.ciphertext)?;
+            let (commit, companion) = ctnd::unpack_ordered(&plain)?;
             (!companion.is_empty()).then(|| JoinFrame {
                 ordering: outcome.ordering,
                 counter: frame.counter,
@@ -324,6 +337,7 @@ pub struct RoomFeed<'a, T, R, P> {
     ordering: cmbl::Id,
     attempts: u8,
     pause: P,
+    key: &'a TransportKey,
 }
 impl<'a, T: clnk::Transport, R: clnk::Transport, P: Pause> RoomFeed<'a, T, R, P> {
     /// At most `attempts` reads (at least one), `pause` between them.
@@ -333,6 +347,7 @@ impl<'a, T: clnk::Transport, R: clnk::Transport, P: Pause> RoomFeed<'a, T, R, P>
         ordering: cmbl::Id,
         attempts: u8,
         pause: P,
+        key: &'a TransportKey,
     ) -> Self {
         Self {
             board,
@@ -340,6 +355,7 @@ impl<'a, T: clnk::Transport, R: clnk::Transport, P: Pause> RoomFeed<'a, T, R, P>
             ordering,
             attempts: attempts.max(1),
             pause,
+            key,
         }
     }
 }
@@ -361,7 +377,7 @@ impl<T: clnk::Transport, R: clnk::Transport, P: Pause> cthr::ContextFeed for Roo
                     })
                     .await
                     .map_err(link_error)?;
-                if let Some(commit) = context_frame(&outcome, &self.ordering, wanted)? {
+                if let Some(commit) = context_frame(&outcome, &self.ordering, wanted, &self.room, self.key)? {
                     return Ok(commit);
                 }
             }
@@ -396,6 +412,8 @@ pub struct RoomJoinInput<'a, K, B: cwst::backend::Backend, S, A, C, P> {
     /// Reads of room traffic while waiting for the canonical context.
     pub attempts: u8,
     pub pause: P,
+    /// The room's transport key, learned from the sealed room state.
+    pub transport: &'a TransportKey,
 }
 
 /// A completed join: Groups, Threads and the Attend checkpoint became visible
@@ -441,6 +459,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             operation,
             attempts,
             pause,
+            transport,
         } = input;
         let now = clock.now().map_err(|_| Error::Unavailable)?;
         // Where the room's ordering stands before the external commit.
@@ -453,7 +472,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             })
             .await
             .map_err(link_error)?;
-        let mut feed = RoomFeed::new(self, room, state.ordering, attempts, pause);
+        let mut feed = RoomFeed::new(self, room, state.ordering, attempts, pause, transport);
         let session = cthr::JoinSession::new(cthr::JoinParts {
             keys,
             clock,
@@ -477,7 +496,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             .prepare_join(&mut sealed_threads, &mut persistence, source, now)
             .await?;
         let reply = attend
-            .order(&mut RoomOrdering::new(self), source, now)
+            .order(&mut RoomOrdering::new(self, transport), source, now)
             .await?;
         let outputs = attend
             .accept(&reply, &mut sealed_threads, &mut persistence, source, now)
@@ -532,6 +551,8 @@ pub struct RoomAdmitInput<'a, K, B: cwst::backend::Backend, S, A, C> {
     pub source: &'a S,
     pub authority: &'a A,
     pub operation: [u8; 32],
+    /// The room's transport key at the epoch the newcomer joined from.
+    pub transport: &'a TransportKey,
 }
 
 /// A completed admission: the member commit is ordered, and Groups and Threads
@@ -578,12 +599,20 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             source,
             authority,
             operation,
+            transport,
         } = input;
         let (candidate, wire) = {
             let effects = groups.prepare_effects();
             let decision = effects.first().ok_or(Error::Authority)?;
             let admission = threads
-                .receive_room_join(keys, store, decision, &frame.commit, &frame.companion, clock)
+                .receive_room_join(
+                    keys,
+                    store,
+                    decision,
+                    &frame.commit,
+                    &frame.companion,
+                    clock,
+                )
                 .await
                 .map_err(thread_error)?;
             let candidate = admission
@@ -600,7 +629,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
                 .ok_or(Error::Authority)?;
             (candidate, wire)
         };
-        RoomOrdering::new(self)
+        RoomOrdering::new(self, transport)
             .order(&ctnd::OrderRequest {
                 room,
                 ordering: frame.ordering,
@@ -638,7 +667,9 @@ mod tests {
                     kind: cmbl::FrameKind::Message,
                     sequence: index as u64 + 1,
                     counter: *counter,
-                    ciphertext: vec![index as u8],
+                    ciphertext: TransportKey::from_bytes([3; 32])
+                        .wrap(&[6; 16], &[index as u8])
+                        .unwrap(),
                 })
                 .collect(),
         }
@@ -647,13 +678,21 @@ mod tests {
     #[test]
     fn only_frames_with_a_companion_are_joins() {
         let mut room = outcome([4; 16], &[7, 8, 9]);
-        room.frames[1].ciphertext = ctnd::pack_ordered(&[0, 1, 2], &[9, 9]);
+        let key = TransportKey::from_bytes([3; 32]);
+        room.frames[1].ciphertext = key
+            .wrap(&[6; 16], &ctnd::pack_ordered(&[0, 1, 2], &[9, 9]))
+            .unwrap();
         // A malformed frame that claims the companion magic is never a join.
         let mut broken = ctnd::pack_ordered(&[0, 1, 2], &[9]);
         broken.pop();
-        room.frames[2].ciphertext = broken;
+        room.frames[2].ciphertext = key.wrap(&[6; 16], &broken).unwrap();
+        // The relay sees only ciphertext: a plain companion frame is no join.
         assert_eq!(
-            joins_in(&room),
+            joins_in(&room, &[6; 16], &TransportKey::from_bytes([4; 32])),
+            vec![]
+        );
+        assert_eq!(
+            joins_in(&room, &[6; 16], &key),
             vec![JoinFrame {
                 ordering: [4; 16],
                 counter: 8,
@@ -668,21 +707,21 @@ mod tests {
         // Frame 0 is the newcomer's own commit (counter 7); a relayed frame
         // at 7 follows; the ordered context commit is the first frame at 8.
         let room = outcome([1; 16], &[7, 7, 8, 8]);
-        assert_eq!(context_frame(&room, &[1; 16], 8), Ok(Some(vec![2])));
-        assert_eq!(context_frame(&room, &[1; 16], 9), Ok(None));
+        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::from_bytes([3; 32])), Ok(Some(vec![2])));
+        assert_eq!(context_frame(&room, &[1; 16], 9, &[6; 16], &TransportKey::from_bytes([3; 32])), Ok(None));
     }
 
     #[test]
     fn another_ordering_generation_is_a_reconcile_not_a_commit() {
         let room = outcome([2; 16], &[8]);
-        assert_eq!(context_frame(&room, &[1; 16], 8), Err(Error::Reconcile));
+        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::from_bytes([3; 32])), Err(Error::Reconcile));
     }
 
     #[test]
     fn the_context_commit_is_never_a_room_state_frame() {
         let mut room = outcome([1; 16], &[8, 8]);
         room.frames[0].kind = cmbl::FrameKind::RoomState { to: 1 };
-        assert_eq!(context_frame(&room, &[1; 16], 8), Ok(Some(vec![1])));
+        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::from_bytes([3; 32])), Ok(Some(vec![1])));
     }
 
     #[test]
@@ -694,7 +733,11 @@ mod tests {
         room.frames[2].kind = cmbl::FrameKind::RoomState { to: 1 };
         room.frames[3].kind = cmbl::FrameKind::RoomState { to: 2 };
         assert_eq!(requests_in(&room), vec![(1, [5; 32])]);
-        assert_eq!(answers_in(&room, &[1; 16], 1), Ok(vec![(8, vec![2])]));
+        // Sealed room state is its own envelope, not a transport frame: returned untouched.
+        assert_eq!(
+            answers_in(&room, &[1; 16], 1),
+            Ok(vec![(8, room.frames[2].ciphertext.clone())])
+        );
         assert_eq!(answers_in(&room, &[1; 16], 9), Ok(vec![]));
         assert_eq!(answers_in(&room, &[9; 16], 1), Err(Error::Reconcile));
     }

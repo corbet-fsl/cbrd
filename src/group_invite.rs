@@ -33,7 +33,9 @@ pub fn consent_handles(request: &Request) -> BTreeMap<String, Vec<u8>> {
     request
         .consents
         .iter()
-        .filter(|consent| !consent.lineage_handle.is_empty() && consent.lineage_handle.len() <= MAX_HANDLE)
+        .filter(|consent| {
+            !consent.lineage_handle.is_empty() && consent.lineage_handle.len() <= MAX_HANDLE
+        })
         .map(|consent| (consent.member.clone(), consent.lineage_handle.clone()))
         .take(MAX_HANDLES)
         .collect()
@@ -294,8 +296,7 @@ impl Invitation {
         from: &str,
         message: Message,
     ) -> Result<Self> {
-        let Message::Invite { request, .. } = message
-        else {
+        let Message::Invite { request, .. } = message else {
             return Err(Error::Invalid);
         };
         let member = owner.member()?;
@@ -512,9 +513,6 @@ impl<A: Authority + ?Sized> Authority for ReceiverAuthority<'_, A> {
             };
         }
         self.inner.contact(community, member, contact, now)
-    }
-    fn seed(&self, community: &str, group: &Id, now: u64) -> Result<()> {
-        self.inner.seed(community, group, now)
     }
     fn parent(
         &self,

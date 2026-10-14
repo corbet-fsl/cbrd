@@ -4,7 +4,7 @@ use cbrd::cgrp::{
     self, Band, Candidate, Command, Commit, CommitFuture, CommittedEffect, DAY, Effect, Error, Id,
     Notification, Persistence, Policy, SeatFormats, Snapshot,
 };
-use cbrd::{BoardAuthority, Contacts, Devices, GroupOwner, PolicyAt, PortFuture, Seeds, Signed};
+use cbrd::{BoardAuthority, Contacts, Devices, GroupOwner, PolicyAt, PortFuture, Signed};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use std::collections::BTreeSet;
 
@@ -120,16 +120,6 @@ impl Contacts for Everyone {
         Ok(())
     }
 }
-struct Standing(bool);
-impl Seeds for Standing {
-    fn authorized(&self, _: &str, _: &Id, _: u64) -> cgrp::Result<()> {
-        if self.0 {
-            Ok(())
-        } else {
-            Err(Error::Authority)
-        }
-    }
-}
 
 struct Checkpoint(u64);
 impl Persistence for Checkpoint {
@@ -151,7 +141,7 @@ impl Persistence for Checkpoint {
 
 struct Owner {
     me: String,
-    authority: BoardAuthority<Directory, Everyone, Standing>,
+    authority: BoardAuthority<Directory, Everyone>,
     snapshot: Snapshot,
     store: Checkpoint,
     clock: u64,
@@ -167,11 +157,11 @@ struct Owner {
     joined_with: Option<Vec<u8>>,
 }
 impl Owner {
-    fn new(me: &str, seeds: bool, answered: BTreeSet<String>) -> Self {
+    fn new(me: &str, answered: BTreeSet<String>) -> Self {
         let snapshot = Snapshot::empty(COMMUNITY.into());
         Self {
             me: me.into(),
-            authority: BoardAuthority::new(Directory, Everyone, Standing(seeds)),
+            authority: BoardAuthority::new(Directory, Everyone),
             store: Checkpoint(snapshot.revision()),
             snapshot,
             clock: 1_000_000,
@@ -306,44 +296,42 @@ fn run(owner: &mut Owner, command: Command, visible: bool) -> cgrp::Result<Snaps
     Ok(owner.snapshot.clone())
 }
 
-fn as_member(owner: &mut Owner, member: &str, seeds: bool) {
+fn as_member(owner: &mut Owner, member: &str) {
     owner.me = member.into();
-    owner.authority = BoardAuthority::new(Directory, Everyone, Standing(seeds));
+    owner.authority = BoardAuthority::new(Directory, Everyone);
 }
 
 #[test]
 fn a_circle_is_created_described_and_left_with_every_member_consenting() {
-    let mut owner = Owner::new("m0", false, names(0, 3));
+    let mut owner = Owner::new("m0", names(0, 3));
     let create = Command::Create {
         id: [1; 32],
         members: names(0, 3),
-        seed: false,
     };
     let snapshot = run(&mut owner, create, false).unwrap();
     assert_eq!(snapshot.members(&[1; 32]).unwrap(), &names(0, 3));
 
-    as_member(&mut owner, "m1", false);
+    as_member(&mut owner, "m1");
     let describe = Command::Describe {
         group: [1; 32],
         name: "Hike".into(),
         description: "Walks".into(),
     };
     run(&mut owner, describe, false).unwrap();
-    as_member(&mut owner, "m2", false);
+    as_member(&mut owner, "m2");
     let snapshot = run(&mut owner, Command::Leave { group: [1; 32] }, false).unwrap();
     assert_eq!(snapshot.members(&[1; 32]).unwrap(), &names(0, 2));
     assert_eq!(owner.store.0, snapshot.revision());
-    as_member(&mut owner, "m0", false);
+    as_member(&mut owner, "m0");
     run(&mut owner, Command::Tick, false).unwrap();
 }
 
 #[test]
 fn a_command_without_every_required_answer_changes_nothing() {
-    let mut owner = Owner::new("m0", false, names(0, 2));
+    let mut owner = Owner::new("m0", names(0, 2));
     let create = Command::Create {
         id: [1; 32],
         members: names(0, 3),
-        seed: false,
     };
     assert_eq!(
         run(&mut owner, create, false).err().unwrap(),
@@ -358,36 +346,32 @@ fn a_command_without_every_required_answer_changes_nothing() {
 }
 
 #[test]
-fn joining_a_room_states_the_profile_visibility_consent() {
-    let mut owner = Owner::new("m0", false, names(0, 5));
-    let seed = Command::Create {
-        id: [2; 32],
-        members: names(0, 3),
-        seed: true,
+fn only_public_room_commands_state_the_profile_consent() {
+    use cbrd::GroupIntent as I;
+    let fork = |kind| I::Fork {
+        id: [3; 32],
+        parents: vec![[1; 32]],
+        members: names(0, 4),
+        kind,
     };
-    // A standing room needs the Rulebook's authorization and visibility consent.
-    assert_eq!(
-        run(&mut owner, seed.clone(), true).err().unwrap(),
-        Error::Authority
+    assert!(
+        !I::Create {
+            id: [1; 32],
+            members: names(0, 3)
+        }
+        .exposes_profile()
     );
-    as_member(&mut owner, "m0", true);
-    assert_eq!(
-        run(&mut owner, seed.clone(), false).err().unwrap(),
-        Error::Authority
+    assert!(!fork(cgrp::ForkKind::Add).exposes_profile());
+    assert!(fork(cgrp::ForkKind::Open).exposes_profile());
+    assert!(fork(cgrp::ForkKind::Split).exposes_profile());
+    assert!(
+        I::Join {
+            group: [2; 32],
+            vouches: BTreeSet::new()
+        }
+        .exposes_profile()
     );
-    run(&mut owner, seed, true).unwrap();
-    as_member(&mut owner, "m4", true);
-    let join = Command::Join {
-        group: [2; 32],
-        member: "m4".into(),
-        vouches: BTreeSet::new(),
-    };
-    assert_eq!(
-        run(&mut owner, join.clone(), false).err().unwrap(),
-        Error::Authority
-    );
-    let snapshot = run(&mut owner, join, true).unwrap();
-    assert!(snapshot.members(&[2; 32]).unwrap().contains("m4"));
+    assert!(!I::Leave { group: [2; 32] }.exposes_profile());
 }
 
 #[test]
@@ -418,7 +402,7 @@ fn required_consents_name_exactly_the_people_who_must_sign() {
 #[test]
 fn the_authority_adapter_checks_expiry_and_leaves_parent_imports_refused() {
     use cgrp::Authority;
-    let authority = BoardAuthority::new(Directory, Everyone, Standing(false));
+    let authority = BoardAuthority::new(Directory, Everyone);
     let mut consent = cgrp::Consent {
         community: COMMUNITY.into(),
         member: "m0".into(),
@@ -441,10 +425,6 @@ fn the_authority_adapter_checks_expiry_and_leaves_parent_imports_refused() {
     consent.member = "m1".into();
     assert_eq!(authority.consent(&consent, 5), Err(Error::Authority));
     assert_eq!(authority.contact(COMMUNITY, "m0", "m1", 5), Ok(()));
-    assert_eq!(
-        authority.seed(COMMUNITY, &[1; 32], 5),
-        Err(Error::Authority)
-    );
     assert_eq!(cbrd::CONSENT_SECONDS, 3_600);
 }
 
@@ -467,7 +447,6 @@ fn an_intent_always_names_the_local_member() {
         GroupIntent::Create {
             id: [2; 32],
             members: names(0, 3),
-            seed: false,
         },
         GroupIntent::Fork {
             id: [3; 32],
@@ -492,11 +471,10 @@ fn an_intent_always_names_the_local_member() {
             .is_err()
     );
     // Executing an intent acts as the owner's member.
-    let mut owner = Owner::new("m0", false, names(0, 3));
+    let mut owner = Owner::new("m0", names(0, 3));
     let create = GroupIntent::Create {
         id: [1; 32],
         members: names(0, 3),
-        seed: false,
     };
     futures_executor::block_on(cbrd::execute_group_intent(
         &mut owner,
@@ -522,7 +500,6 @@ fn circle_proposal(actor: &mut Owner, group: u8, members: BTreeSet<String>) -> c
     let command = Command::Create {
         id: [group; 32],
         members,
-        seed: false,
     };
     block(cbrd::propose_group_command(actor, &policy, command, false)).unwrap()
 }
@@ -543,9 +520,9 @@ fn answer(
 
 #[test]
 fn a_circle_needs_each_member_to_answer_for_themselves_before_it_exists() {
-    let mut m0 = Owner::new("m0", false, only("m0"));
-    let mut m1 = Owner::new("m1", false, only("m1"));
-    let mut m2 = Owner::new("m2", false, only("m2"));
+    let mut m0 = Owner::new("m0", only("m0"));
+    let mut m1 = Owner::new("m1", only("m1"));
+    let mut m2 = Owner::new("m2", only("m2"));
     let mut proposal = circle_proposal(&mut m0, 1, names(0, 3));
     assert_eq!(
         proposal.awaiting(),
@@ -576,9 +553,9 @@ fn a_circle_needs_each_member_to_answer_for_themselves_before_it_exists() {
 
 #[test]
 fn one_decline_or_a_replayed_wrong_or_foreign_answer_never_completes_a_group() {
-    let mut m0 = Owner::new("m0", false, only("m0"));
-    let mut m1 = Owner::new("m1", false, only("m1"));
-    let mut m2 = Owner::new("m2", false, only("m2"));
+    let mut m0 = Owner::new("m0", only("m0"));
+    let mut m1 = Owner::new("m1", only("m1"));
+    let mut m2 = Owner::new("m2", only("m2"));
     let mut proposal = circle_proposal(&mut m0, 1, names(0, 3));
     let text = proposal.invitation().to_text().unwrap();
     let yes = answer(&mut m1, "m0", &text, true).unwrap();
@@ -589,7 +566,7 @@ fn one_decline_or_a_replayed_wrong_or_foreign_answer_never_completes_a_group() {
     assert!(proposal.admit("m1", yes, 1_000_150).is_err());
 
     // A consent for another operation or another command does not count.
-    let mut other = circle_proposal(&mut Owner::new("m0", false, only("m0")), 9, names(0, 3));
+    let mut other = circle_proposal(&mut Owner::new("m0", only("m0")), 9, names(0, 3));
     let stray = answer(&mut m2, "m0", &other.invitation().to_text().unwrap(), true).unwrap();
     assert!(proposal.admit("m2", stray, 1_000_150).is_err());
     let _ = &mut other;
@@ -609,17 +586,17 @@ fn one_decline_or_a_replayed_wrong_or_foreign_answer_never_completes_a_group() {
 
 #[test]
 fn an_invitation_is_refused_from_a_stranger_for_a_non_member_or_when_stale() {
-    let mut m0 = Owner::new("m0", false, only("m0"));
+    let mut m0 = Owner::new("m0", only("m0"));
     let proposal = circle_proposal(&mut m0, 1, names(0, 3));
     let text = proposal.invitation().to_text().unwrap();
     // Not sent by the actor named in the request.
-    assert!(answer(&mut Owner::new("m1", false, only("m1")), "m2", &text, true).is_err());
+    assert!(answer(&mut Owner::new("m1", only("m1")), "m2", &text, true).is_err());
     // The local member is not a consenting party.
-    assert!(answer(&mut Owner::new("m7", false, only("m7")), "m0", &text, true).is_err());
+    assert!(answer(&mut Owner::new("m7", only("m7")), "m0", &text, true).is_err());
     // The actor cannot invite itself.
-    assert!(answer(&mut Owner::new("m0", false, only("m0")), "m0", &text, true).is_err());
+    assert!(answer(&mut Owner::new("m0", only("m0")), "m0", &text, true).is_err());
     // Stale: the receiver's clock is far beyond the consent window.
-    let mut late = Owner::new("m1", false, only("m1"));
+    let mut late = Owner::new("m1", only("m1"));
     late.clock += 10_000;
     assert!(answer(&mut late, "m0", &text, true).is_err());
     // Wrong version and unknown fields are refused.
@@ -636,7 +613,7 @@ fn an_invitation_is_refused_from_a_stranger_for_a_non_member_or_when_stale() {
 
 #[test]
 fn nobody_can_be_added_or_removed_without_the_member_answering() {
-    let mut m0 = Owner::new("m0", false, only("m0"));
+    let mut m0 = Owner::new("m0", only("m0"));
     // Create carries every member: the actor alone cannot sign for them.
     let proposal = circle_proposal(&mut m0, 1, names(0, 3));
     let policy = PolicyAt::new(COMMUNITY, policy());
@@ -658,9 +635,9 @@ fn invitation_for(invitee: &mut Owner, from: &str, text: &str) -> cbrd::Invitati
 #[test]
 fn a_created_group_carries_each_members_signed_key_package_and_hands_out_one_welcome() {
     let policy = PolicyAt::new(COMMUNITY, policy());
-    let mut m0 = Owner::new("m0", false, only("m0"));
-    let mut m1 = Owner::new("m1", false, only("m1"));
-    let mut m2 = Owner::new("m2", false, only("m2"));
+    let mut m0 = Owner::new("m0", only("m0"));
+    let mut m1 = Owner::new("m1", only("m1"));
+    let mut m2 = Owner::new("m2", only("m2"));
     for owner in [&mut m0, &mut m1, &mut m2] {
         owner.mls = true;
     }
@@ -708,9 +685,9 @@ fn a_created_group_carries_each_members_signed_key_package_and_hands_out_one_wel
 #[test]
 fn a_swapped_key_package_breaks_the_consent_and_the_group_is_not_created() {
     let policy = PolicyAt::new(COMMUNITY, policy());
-    let mut m0 = Owner::new("m0", false, only("m0"));
-    let mut m1 = Owner::new("m1", false, only("m1"));
-    let mut m2 = Owner::new("m2", false, only("m2"));
+    let mut m0 = Owner::new("m0", only("m0"));
+    let mut m1 = Owner::new("m1", only("m1"));
+    let mut m2 = Owner::new("m2", only("m2"));
     for owner in [&mut m0, &mut m1, &mut m2] {
         owner.mls = true;
     }
@@ -735,9 +712,9 @@ fn a_swapped_key_package_breaks_the_consent_and_the_group_is_not_created() {
 #[test]
 fn every_signer_attaches_its_own_locator_and_the_joiner_reads_them_from_the_consents() {
     let policy = PolicyAt::new(COMMUNITY, policy());
-    let mut m0 = Owner::new("m0", false, only("m0"));
-    let mut m1 = Owner::new("m1", false, only("m1"));
-    let mut m2 = Owner::new("m2", false, only("m2"));
+    let mut m0 = Owner::new("m0", only("m0"));
+    let mut m1 = Owner::new("m1", only("m1"));
+    let mut m2 = Owner::new("m2", only("m2"));
     for owner in [&mut m0, &mut m1, &mut m2] {
         owner.mls = true;
     }

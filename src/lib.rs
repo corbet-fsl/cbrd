@@ -10,7 +10,9 @@ pub mod join_seal;
 mod policy;
 mod profile;
 mod rooms;
-pub use authority::{BoardAuthority, Contacts, Devices, Seeds};
+mod transport;
+pub use transport::{RoomState, TransportKey};
+pub use authority::{BoardAuthority, Contacts, Devices};
 pub use cgrd;
 pub use cgrp::{self, GroupView};
 pub use clnk::{self, Challenge, Prepared, cfrm};
@@ -26,8 +28,8 @@ pub use exchange::{
 };
 pub use group_invite::{
     Committed as GroupCommitted, INVITE_VERSION, Invitation, Message as GroupMessage,
-    consent_handles,
-    Proposal as GroupProposal, commit as commit_group_proposal, propose as propose_group_command,
+    Proposal as GroupProposal, commit as commit_group_proposal, consent_handles,
+    propose as propose_group_command,
 };
 pub use groups::{
     CONSENT_SECONDS, GroupOwner, Intent as GroupIntent, PolicyAt, PortFuture, Published, Signed,

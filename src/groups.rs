@@ -198,9 +198,6 @@ impl<T: Authority + ?Sized> Authority for Port<'_, T> {
     fn contact(&self, community: &str, member: &str, contact: &str, now: u64) -> Result<()> {
         self.0.contact(community, member, contact, now)
     }
-    fn seed(&self, community: &str, group: &Id, now: u64) -> Result<()> {
-        self.0.seed(community, group, now)
-    }
     fn parent(
         &self,
         state: &cgrp::GroupState,
@@ -303,7 +300,6 @@ pub enum Intent {
     Create {
         id: Id,
         members: BTreeSet<String>,
-        seed: bool,
     },
     Fork {
         id: Id,
@@ -326,9 +322,20 @@ pub enum Intent {
 }
 
 impl Intent {
+    /// Whether the command lands in a public room (joining is the consent).
+    pub fn exposes_profile(&self) -> bool {
+        matches!(
+            self,
+            Self::Join { .. }
+                | Self::Fork {
+                    kind: cgrp::ForkKind::Split | cgrp::ForkKind::Open,
+                    ..
+                }
+        )
+    }
     pub fn command(self, member: &str) -> Command {
         match self {
-            Self::Create { id, members, seed } => Command::Create { id, members, seed },
+            Self::Create { id, members } => Command::Create { id, members },
             Self::Fork {
                 id,
                 parents,
