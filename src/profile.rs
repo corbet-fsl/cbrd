@@ -179,9 +179,22 @@ impl<T: clnk::Transport, R> Board<T, R> {
             .and_then(|settings| settings.content.get(SPONSOR_VISIBLE))
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
+        let vouched_by = edit.vouched_by.filter(|_| visible);
         draft
-            .set_vouched_by(edit.vouched_by.filter(|_| visible))
+            .set_vouched_by(vouched_by.clone())
             .map_err(|_| Error::Rejected)?;
+        // The endorsement comes only from this device's custody (never a request) and its
+        // signature is verified for this community and member inside Profile. The sponsor's
+        // CURRENT device roster is not held here: the publisher accepts exactly the device
+        // that signed, and the verifier (Forum) enforces the roster with its own lookup.
+        let held = vouched_by
+            .as_deref()
+            .and_then(|wire| cvch::link::Endorsement::from_bytes(wire).ok());
+        let sponsors = |handle: &str| {
+            held.as_ref()
+                .filter(|endorsement| endorsement.handle == handle)
+                .map(|endorsement| vec![endorsement.device])
+        };
         let mut rules = edit.rules;
         rules.retain(|rule| !matches!(rule, cgrd::Rule::Block { .. }));
         rules.extend(block_rules(blocked));
@@ -201,6 +214,7 @@ impl<T: clnk::Transport, R> Board<T, R> {
                 context.custody,
                 &PortableCodec,
                 &contact,
+                &sponsors,
             )
             .map_err(|_| Error::Rejected)
     }

@@ -76,12 +76,34 @@ pub struct DiscoveryPage {
     pub watch: Vec<u8>,
 }
 impl Page {
+    /// "vouched for by <handle>" for one card, only when its endorsement verifies against a
+    /// sponsor this page itself proves (the requester or another verified owner). A sponsor
+    /// that is not in the page shows nothing: absence here is not evidence of departure.
+    fn vouched_line(&self, pair: &csrh::CheckedPair) -> Option<String> {
+        let owner = pair.owner();
+        let endorsement = owner.vouched_by()?;
+        let handle = cvch::link::Endorsement::from_bytes(endorsement).ok()?.handle;
+        let sponsor = std::iter::once(pair.requester())
+            .chain(self.pairs.iter().flat_map(|p| [p.requester(), p.owner()]))
+            .map(|publication| publication.credential())
+            .find(|credential| credential.handle == handle)?;
+        vouched_by_line(
+            &owner.transcript().community,
+            &owner.transcript().member,
+            endorsement,
+            Some(sponsor),
+        )
+    }
     pub fn discovery(&self) -> DiscoveryPage {
         DiscoveryPage {
             entries: self
                 .pairs
                 .iter()
-                .filter_map(|pair| pair.discovery())
+                .filter_map(|pair| {
+                    let mut entry = pair.discovery()?;
+                    entry.vouched_by = self.vouched_line(pair);
+                    Some(entry)
+                })
                 .collect(),
             cursor: self.cursor.clone(),
             watch: self.watch.clone(),
