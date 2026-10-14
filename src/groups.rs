@@ -220,13 +220,88 @@ pub async fn prepare_command<O: GroupOwner + ?Sized>(
     visible: bool,
     max_groups: usize,
 ) -> Result<(Candidate, Policy, u64, Request)> {
+    prepare_inner(owner, policy, command, visible, max_groups, None).await
+}
+
+/// The Join of a newcomer who holds no checkpoint of the group: the parent is
+/// the delivered room state, already authenticated against the MLS evidence by
+/// `cthr::Threads::verify_room_state` (which the caller MUST have passed before
+/// this call). The request names that state's commitment, and the Authority
+/// wrapper accepts exactly that state for exactly this Join, nothing else.
+/// Nothing is sent or stored here.
+pub async fn prepare_join_from_state<O: GroupOwner + ?Sized>(
+    owner: &mut O,
+    policy: &(impl PolicySource + ?Sized),
+    group: Id,
+    vouches: BTreeSet<String>,
+    state: &cgrp::GroupState,
+    visible: bool,
+    max_groups: usize,
+) -> Result<(Candidate, Policy, u64, Request)> {
+    if state.id() != &group {
+        return Err(cgrp::Error::Authority);
+    }
+    let command = Intent::Join { group, vouches }.command(&owner.member()?);
+    prepare_inner(owner, policy, command, visible, max_groups, Some(state)).await
+}
+
+/// Accepts only the one verified state as the parent of the one Join. Groups
+/// asks again at publication, so the same wrapper rides with the join.
+pub struct JoinParent<'a, A: ?Sized> {
+    inner: &'a A,
+    state: &'a cgrp::GroupState,
+}
+impl<'a, A: ?Sized> JoinParent<'a, A> {
+    pub fn new(inner: &'a A, state: &'a cgrp::GroupState) -> Self {
+        Self { inner, state }
+    }
+}
+impl<A: Authority + ?Sized> Authority for JoinParent<'_, A> {
+    fn consent(&self, consent: &Consent, now: u64) -> Result<()> {
+        self.inner.consent(consent, now)
+    }
+    fn contact(&self, community: &str, member: &str, contact: &str, now: u64) -> Result<()> {
+        self.inner.contact(community, member, contact, now)
+    }
+    fn parent(
+        &self,
+        state: &cgrp::GroupState,
+        request: &Request,
+        _: &Policy,
+        _: u64,
+    ) -> Result<()> {
+        match &request.command {
+            Command::Join { group, .. }
+                if state == self.state && state.id() == group && request.parents.len() == 1 =>
+            {
+                Ok(())
+            }
+            _ => Err(cgrp::Error::Authority),
+        }
+    }
+}
+
+async fn prepare_inner<O: GroupOwner + ?Sized>(
+    owner: &mut O,
+    policy: &(impl PolicySource + ?Sized),
+    command: Command,
+    visible: bool,
+    max_groups: usize,
+    delivered: Option<&cgrp::GroupState>,
+) -> Result<(Candidate, Policy, u64, Request)> {
     let actor = owner.member()?;
     let now = owner.now()?;
     let snapshot = owner.snapshot().await?;
     let current = policy.current(snapshot.community(), now)?;
     let mut request = Request {
         operation: owner.operation()?,
-        parents: snapshot.parent_references(&command)?,
+        parents: match delivered {
+            Some(state) => vec![cgrp::ParentRef {
+                id: *state.id(),
+                commitment: state.commitment()?,
+            }],
+            None => snapshot.parent_references(&command)?,
+        },
         effective_at: now,
         actor: actor.clone(),
         command,
@@ -264,14 +339,28 @@ pub async fn prepare_command<O: GroupOwner + ?Sized>(
         consent.authority = signed.authority;
         request.consents.push(consent);
     }
-    let candidate = cgrp::prepare(
-        &snapshot,
-        &request,
-        &Port(policy),
-        &Port(owner.authority()),
-        now,
-        max_groups,
-    )?;
+    let candidate = match delivered {
+        Some(state) => cgrp::prepare_with_parents(
+            &snapshot,
+            &request,
+            std::slice::from_ref(state),
+            &Port(policy),
+            &JoinParent {
+                inner: &Port(owner.authority()),
+                state,
+            },
+            now,
+            max_groups,
+        )?,
+        None => cgrp::prepare(
+            &snapshot,
+            &request,
+            &Port(policy),
+            &Port(owner.authority()),
+            now,
+            max_groups,
+        )?,
+    };
     Ok((candidate, current, now, request))
 }
 
