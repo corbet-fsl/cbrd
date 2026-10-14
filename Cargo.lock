@@ -634,7 +634,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 dependencies = [
  "minicov 0.3.9",
@@ -738,7 +738,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "blake3",
- "browser-coverage-runtime",
+ "browser-coverage-runtime-cbrd",
  "cchr",
  "cfrm",
  "cgrd",
@@ -6766,7 +6766,7 @@ name = "clbs"
 version = "0.0.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
@@ -6774,11 +6774,11 @@ name = "cvlt"
 version = "0.0.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
@@ -6798,7 +6798,7 @@ name = "cplc"
 version = "0.0.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
@@ -6806,7 +6806,7 @@ name = "crpt"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
@@ -6834,7 +6834,7 @@ name = "cprz-video"
 version = "0.0.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
@@ -6858,11 +6858,11 @@ name = "cpmt"
 version = "0.2.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
@@ -6886,7 +6886,7 @@ name = "cmeet-e2e"
 version = "0.0.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
@@ -6898,11 +6898,11 @@ name = "cfyr-browser-tests"
 version = "0.0.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"
 
 [[patch.unused]]
@@ -6914,5 +6914,5 @@ name = "cwvs"
 version = "0.1.0"
 
 [[patch.unused]]
-name = "browser-coverage-runtime"
+name = "browser-coverage-runtime-cbrd"
 version = "0.0.0"

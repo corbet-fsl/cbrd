@@ -45,7 +45,7 @@ ed25519-dalek = { version = "3", default-features = false, features = ["fast"] }
 futures-executor = "0.3"
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-browser-coverage-runtime = { path = ".ci/coverage-runtime" }
+browser-coverage-runtime = { package = "browser-coverage-runtime-cbrd", path = ".ci/coverage-runtime" }
 wasm-bindgen-test = "0.3"
 
 [lints.rust]
