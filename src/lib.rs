@@ -38,7 +38,7 @@ pub use groups::{
 pub use policy::{SettingsPolicy, project as project_group_policy};
 pub use profile::{Edit, PublishContext, SPONSOR_VISIBLE, block_rules, commit_profile};
 pub use rooms::{JoinFrame, JoinsRead, Pause, RoomFeed, RoomJoinInput, RoomJoined, RoomOrdering};
-pub use vouched::{FORMER_MEMBER, vouched_by_line};
+pub use vouched::{FORMER_MEMBER, Sponsor, vouched_by_line};
 pub use {cnvl, cpfl, cshm};
 /// A bounded locally rechecked page; original owner types carry its evidence.
 pub struct Page {
@@ -79,29 +79,48 @@ impl Page {
     /// "vouched for by <handle>" for one card, only when its endorsement verifies against a
     /// sponsor this page itself proves (the requester or another verified owner). A sponsor
     /// that is not in the page shows nothing: absence here is not evidence of departure.
-    fn vouched_line(&self, pair: &csrh::CheckedPair) -> Option<String> {
+    fn vouched_line(
+        &self,
+        pair: &csrh::CheckedPair,
+        departed: &dyn Fn(&str) -> Option<Vec<[u8; 32]>>,
+    ) -> Option<String> {
         let owner = pair.owner();
         let endorsement = owner.vouched_by()?;
         let handle = cvch::link::Endorsement::from_bytes(endorsement).ok()?.handle;
-        let sponsor = std::iter::once(pair.requester())
+        let current = std::iter::once(pair.requester())
             .chain(self.pairs.iter().flat_map(|p| [p.requester(), p.owner()]))
             .map(|publication| publication.credential())
-            .find(|credential| credential.handle == handle)?;
+            .find(|credential| credential.handle == handle);
+        let lineage = departed(&handle);
+        let sponsor = match (&current, &lineage) {
+            (Some(current), _) => Sponsor::Current(current),
+            (None, Some(devices)) => Sponsor::Departed(devices),
+            (None, None) => Sponsor::Unknown,
+        };
         vouched_by_line(
             &owner.transcript().community,
             &owner.transcript().member,
             endorsement,
-            Some(sponsor),
+            sponsor,
         )
     }
     pub fn discovery(&self) -> DiscoveryPage {
+        self.discovery_with_departed(&|_| None)
+    }
+    /// As [`Page::discovery`], with the community's retained lineage of departed sponsors
+    /// (handle to the devices it held at admission) so a departed sponsor reads
+    /// "a former member". Without a roster such a card shows no line.
+    pub fn discovery_with_departed(
+        &self,
+        departed: &dyn Fn(&str) -> Option<Vec<[u8; 32]>>,
+    ) -> DiscoveryPage {
         DiscoveryPage {
             entries: self
                 .pairs
                 .iter()
                 .filter_map(|pair| {
                     let mut entry = pair.discovery()?;
-                    entry.vouched_by = self.vouched_line(pair);
+                    entry.vouched_by = self.vouched_line(pair, departed);
                     Some(entry)
                 })
                 .collect(),
