@@ -26,6 +26,7 @@ python3 .ci/check-first-party.py
 
 # --- check job (stable) in exact CI order ---
 CBRD_LAST_GATE="fmt"
+bash .ci/update-our-crates.sh
 cargo fmt --all
 CBRD_LAST_GATE="fmt-gate"
 git diff -- src tests examples > formatting.patch
