@@ -528,9 +528,6 @@ impl<A: Authority + ?Sized> Authority for ReceiverAuthority<'_, A> {
         }
         self.inner.contact(community, member, contact, now)
     }
-    fn seed(&self, community: &str, group: &Id, now: u64) -> Result<()> {
-        self.inner.seed(community, group, now)
-    }
     fn parent(
         &self,
         state: &cgrp::GroupState,

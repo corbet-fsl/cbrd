@@ -11,7 +11,7 @@ mod policy;
 mod profile;
 mod rooms;
 mod vouched;
-pub use authority::{BoardAuthority, Contacts, Devices, Seeds};
+pub use authority::{BoardAuthority, Contacts, Devices};
 pub use cgrd;
 pub use cgrp::{self, GroupView};
 pub use clnk::{self, Challenge, Prepared, cfrm};
