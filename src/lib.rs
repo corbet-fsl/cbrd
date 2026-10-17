@@ -82,7 +82,9 @@ impl Page {
     fn vouched_line(&self, pair: &csrh::CheckedPair) -> Option<String> {
         let owner = pair.owner();
         let endorsement = owner.vouched_by()?;
-        let handle = cvch::link::Endorsement::from_bytes(endorsement).ok()?.handle;
+        let handle = cvch::link::Endorsement::from_bytes(endorsement)
+            .ok()?
+            .handle;
         let current = std::iter::once(pair.requester())
             .chain(self.pairs.iter().flat_map(|p| [p.requester(), p.owner()]))
             .map(|publication| publication.credential())
@@ -205,9 +207,15 @@ impl<T: clnk::Transport, R> Board<T, R> {
         self.clear_view();
         self.link.connect(input).await
     }
-    pub async fn enter(&mut self, signature: Vec<u8>) -> Result<(), clnk::ErrorCode> {
+    /// Finish attendance: the device signature plus the member's record
+    /// presentation bound to the challenge's record context.
+    pub async fn enter(
+        &mut self,
+        signature: Vec<u8>,
+        record_proof: Vec<u8>,
+    ) -> Result<(), clnk::ErrorCode> {
         self.clear_view();
-        self.link.enter(signature).await
+        self.link.enter(signature, record_proof).await
     }
     pub fn prepare(
         &self,

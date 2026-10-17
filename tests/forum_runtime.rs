@@ -98,7 +98,10 @@ async fn enter(board: &mut Board<Http>, fixture: &Fixture) {
         .unwrap();
     assert_eq!(board.status().connection, clnk::State::Connecting);
     board
-        .enter(fixture.device.sign(challenge.message()).to_bytes().to_vec())
+        .enter(
+            fixture.device.sign(challenge.message()).to_bytes().to_vec(),
+            vec![],
+        )
         .await
         .unwrap();
     assert_eq!(board.status().connection, clnk::State::Present);
@@ -644,6 +647,7 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
                 .sign(challenge.message())
                 .to_bytes()
                 .to_vec(),
+            vec![],
         )
         .await
         .unwrap();
