@@ -284,12 +284,11 @@ impl GroupOwner for Owner {
     }
 }
 
-fn run(owner: &mut Owner, command: Command, visible: bool) -> cgrp::Result<Snapshot> {
+fn run(owner: &mut Owner, command: Command) -> cgrp::Result<Snapshot> {
     futures_executor::block_on(cbrd::execute_group_command(
         owner,
         &PolicyAt::new(COMMUNITY, policy()),
         command,
-        visible,
         128,
     ))?;
     Ok(owner.snapshot.clone())
@@ -306,7 +305,7 @@ fn a_circle_is_created_described_and_left_with_every_member_consenting() {
         id: [1; 32],
         members: names(0, 3),
     };
-    let snapshot = run(&mut owner, create, false).unwrap();
+    let snapshot = run(&mut owner, create).unwrap();
     assert_eq!(snapshot.members(&[1; 32]).unwrap(), &names(0, 3));
 
     as_member(&mut owner, "m1");
@@ -315,13 +314,13 @@ fn a_circle_is_created_described_and_left_with_every_member_consenting() {
         name: "Hike".into(),
         description: "Walks".into(),
     };
-    run(&mut owner, describe, false).unwrap();
+    run(&mut owner, describe).unwrap();
     as_member(&mut owner, "m2");
-    let snapshot = run(&mut owner, Command::Leave { group: [1; 32] }, false).unwrap();
+    let snapshot = run(&mut owner, Command::Leave { group: [1; 32] }).unwrap();
     assert_eq!(snapshot.members(&[1; 32]).unwrap(), &names(0, 2));
     assert_eq!(owner.store.0, snapshot.revision());
     as_member(&mut owner, "m0");
-    run(&mut owner, Command::Tick, false).unwrap();
+    run(&mut owner, Command::Tick).unwrap();
 }
 
 #[test]
@@ -332,55 +331,47 @@ fn a_command_without_every_required_answer_changes_nothing() {
         members: names(0, 3),
     };
     assert_eq!(
-        run(&mut owner, create, false).err().unwrap(),
+        run(&mut owner, create).err().unwrap(),
         Error::Unavailable
     );
     assert_eq!(owner.snapshot.revision(), 0);
     owner.fail_clock = true;
     assert_eq!(
-        run(&mut owner, Command::Tick, false).err().unwrap(),
+        run(&mut owner, Command::Tick).err().unwrap(),
         Error::Clock
     );
 }
 
 #[test]
-fn joining_a_room_states_the_profile_visibility_consent() {
+fn joining_a_room_is_the_profile_visibility_consent_without_a_switch() {
     let mut owner = Owner::new("m0", names(0, 45));
     let circle = Command::Create {
         id: [1; 32],
         members: names(0, 12),
     };
-    run(&mut owner, circle, false).unwrap();
+    run(&mut owner, circle).unwrap();
     let ingroup = Command::Fork {
         id: [2; 32],
         parents: vec![[1; 32]],
         members: names(0, 42),
         kind: cgrp::ForkKind::Add,
     };
-    run(&mut owner, ingroup, false).unwrap();
+    run(&mut owner, ingroup).unwrap();
     let open = Command::Fork {
         id: [3; 32],
         parents: vec![[2; 32]],
         members: names(0, 42),
         kind: cgrp::ForkKind::Open,
     };
-    // Opening a room needs every member's visibility consent.
-    assert_eq!(
-        run(&mut owner, open.clone(), false).err().unwrap(),
-        Error::Authority
-    );
-    run(&mut owner, open, true).unwrap();
+    // Opening a room is the members' consent to visible profiles: nothing else is asked.
+    run(&mut owner, open).unwrap();
     as_member(&mut owner, "m44");
     let join = Command::Join {
         group: [3; 32],
         member: "m44".into(),
         vouches: BTreeSet::new(),
     };
-    assert_eq!(
-        run(&mut owner, join.clone(), false).err().unwrap(),
-        Error::Authority
-    );
-    let snapshot = run(&mut owner, join, true).unwrap();
+    let snapshot = run(&mut owner, join).unwrap();
     assert!(snapshot.members(&[3; 32]).unwrap().contains("m44"));
 }
 
@@ -490,7 +481,6 @@ fn an_intent_always_names_the_local_member() {
         &mut owner,
         &PolicyAt::new(COMMUNITY, policy()),
         create,
-        false,
         128,
     ))
     .unwrap();
@@ -511,7 +501,7 @@ fn circle_proposal(actor: &mut Owner, group: u8, members: BTreeSet<String>) -> c
         id: [group; 32],
         members,
     };
-    block(cbrd::propose_group_command(actor, &policy, command, false)).unwrap()
+    block(cbrd::propose_group_command(actor, &policy, command)).unwrap()
 }
 
 /// Deliver the invitation as the text of a conversation message and return
@@ -525,7 +515,7 @@ fn answer(
     let policy = PolicyAt::new(COMMUNITY, policy());
     let message = cbrd::GroupMessage::from_text(text)?;
     let invitation = block(cbrd::Invitation::receive(invitee, &policy, from, message))?;
-    block(invitation.answer(invitee, accept, false))
+    block(invitation.answer(invitee, accept))
 }
 
 #[test]
@@ -656,7 +646,7 @@ fn a_created_group_carries_each_members_signed_key_package_and_hands_out_one_wel
     let mut invitations = vec![];
     for (from, owner) in [("m1", &mut m1), ("m2", &mut m2)] {
         let invitation = invitation_for(owner, "m0", &text);
-        let reply = block(invitation.answer(owner, true, false)).unwrap();
+        let reply = block(invitation.answer(owner, true)).unwrap();
         // The package is part of the signed consent, tied to this group.
         let cbrd::GroupMessage::Consent { consent, .. } = &reply else {
             panic!("a consent")
@@ -736,7 +726,7 @@ fn every_signer_attaches_its_own_locator_and_the_joiner_reads_them_from_the_cons
     let mut invitations = vec![];
     for (from, owner) in [("m1", &mut m1), ("m2", &mut m2)] {
         let invitation = invitation_for(owner, "m0", &text);
-        let reply = block(invitation.answer(owner, true, false)).unwrap();
+        let reply = block(invitation.answer(owner, true)).unwrap();
         proposal.admit(from, reply, 1_000_150).unwrap();
         invitations.push(invitation);
     }

@@ -167,7 +167,6 @@ pub async fn propose<O: GroupOwner + ?Sized>(
     owner: &mut O,
     policy: &(impl PolicySource + ?Sized),
     command: Command,
-    visible: bool,
 ) -> Result<Proposal> {
     let actor = owner.member()?;
     let now = owner.now()?;
@@ -191,7 +190,7 @@ pub async fn propose<O: GroupOwner + ?Sized>(
             &request,
             current.epoch,
             digest,
-            visible,
+            request.command.exposes_profile(),
             Vec::new(),
             now,
         )
@@ -390,12 +389,12 @@ impl Invitation {
     }
 
     /// The member's decision. Accepting signs this member's consent over the
-    /// exact command digest; `visible` is the semipublic profile statement.
+    /// exact command digest; the profile statement follows the command (joining a
+    /// public room is the consent to visible profiles).
     pub async fn answer<O: GroupOwner + ?Sized>(
         &self,
         owner: &mut O,
         accept: bool,
-        visible: bool,
     ) -> Result<Message> {
         if owner.member()? != self.member {
             return Err(Error::Authority);
@@ -422,7 +421,7 @@ impl Invitation {
             &self.request,
             self.epoch,
             digest,
-            visible,
+            self.request.command.exposes_profile(),
             key_package,
             now,
         )

@@ -217,7 +217,6 @@ pub async fn prepare_command<O: GroupOwner + ?Sized>(
     owner: &mut O,
     policy: &(impl PolicySource + ?Sized),
     command: Command,
-    visible: bool,
     max_groups: usize,
 ) -> Result<(Candidate, Policy, u64, Request)> {
     let actor = owner.member()?;
@@ -239,6 +238,7 @@ pub async fn prepare_command<O: GroupOwner + ?Sized>(
             &required_consents(&request.command, &actor),
         )
         .await?;
+    let lineage_handle = owner.own_handle().await?;
     for member in required_consents(&request.command, &actor) {
         let mut consent = Consent {
             community: snapshot.community().to_owned(),
@@ -246,10 +246,10 @@ pub async fn prepare_command<O: GroupOwner + ?Sized>(
             operation: request.operation,
             policy_epoch: current.epoch,
             command_digest: digest,
-            profile_visibility: visible,
+            profile_visibility: request.command.exposes_profile(),
             valid_until: now.saturating_add(CONSENT_SECONDS),
             key_package: vec![],
-            lineage_handle: vec![],
+            lineage_handle: lineage_handle.clone(),
             signature: vec![],
             authority: vec![],
         };
@@ -276,18 +276,17 @@ pub async fn prepare_command<O: GroupOwner + ?Sized>(
 }
 
 /// Build, sign, prepare and publish one group command as the local member.
-/// `visible` is the semipublic consent: every signer states that members of the
-/// group may see their private profile. Rooms (opening and public) refuse a
-/// command without it.
+/// Joining a public room is the consent to visible profiles (decided
+/// 2026-10-13): every signer's statement is derived from the command itself
+/// (`Command::exposes_profile`); there is no per-call switch.
 pub async fn execute<O: GroupOwner + ?Sized>(
     owner: &mut O,
     policy: &(impl PolicySource + ?Sized),
     command: Command,
-    visible: bool,
     max_groups: usize,
 ) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
     let (candidate, current, now, _) =
-        prepare_command(owner, policy, command, visible, max_groups).await?;
+        prepare_command(owner, policy, command, max_groups).await?;
     let (committed, effects) = owner.publish(candidate, now).await?;
     Ok((committed.views(&current, now)?, effects))
 }
@@ -360,11 +359,10 @@ pub async fn execute_intent<O: GroupOwner + ?Sized>(
     owner: &mut O,
     policy: &(impl PolicySource + ?Sized),
     intent: Intent,
-    visible: bool,
     max_groups: usize,
 ) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
     let command = intent.command(&owner.member()?);
-    execute(owner, policy, command, visible, max_groups).await
+    execute(owner, policy, command, max_groups).await
 }
 
 /// `prepare_command` for an intent of the local member.
@@ -372,9 +370,8 @@ pub async fn prepare_intent<O: GroupOwner + ?Sized>(
     owner: &mut O,
     policy: &(impl PolicySource + ?Sized),
     intent: Intent,
-    visible: bool,
     max_groups: usize,
 ) -> Result<(Candidate, Policy, u64, Request)> {
     let command = intent.command(&owner.member()?);
-    prepare_command(owner, policy, command, visible, max_groups).await
+    prepare_command(owner, policy, command, max_groups).await
 }
