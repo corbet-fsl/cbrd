@@ -61,6 +61,12 @@ pub enum Message {
         request: Request,
         welcome: Vec<u8>,
     },
+    /// The private listing key of a public room, from one member to a fellow
+    /// member of the same room (the receiver checks the sender's standing).
+    Listing {
+        version: u8,
+        share: cgrp::ListingShare,
+    },
 }
 
 impl Message {
@@ -73,7 +79,8 @@ impl Message {
             Self::Invite { version, .. }
             | Self::Consent { version, .. }
             | Self::Decline { version, .. }
-            | Self::Welcome { version, .. } => *version,
+            | Self::Welcome { version, .. }
+            | Self::Listing { version, .. } => *version,
         };
         if version != INVITE_VERSION {
             return Err(Error::Invalid);
@@ -156,7 +163,9 @@ impl Proposal {
                 self.declined = true;
                 Ok(())
             }
-            Message::Invite { .. } | Message::Welcome { .. } => Err(Error::Invalid),
+            Message::Invite { .. } | Message::Welcome { .. } | Message::Listing { .. } => {
+                Err(Error::Invalid)
+            }
         }
     }
 }
