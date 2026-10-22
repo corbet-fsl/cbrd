@@ -95,6 +95,9 @@ impl TransportKey {
 pub struct RoomState {
     pub evidence: cthr::ParentEvidence,
     pub transport: cthr::TransportKeys,
+    /// Lineage-read handles of the roster the sealing member holds (locators
+    /// only: the newcomer reads and Charter-verifies each lineage itself).
+    pub handles: std::collections::BTreeMap<String, Vec<u8>>,
 }
 
 #[cfg(test)]
