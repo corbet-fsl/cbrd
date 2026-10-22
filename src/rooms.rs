@@ -665,7 +665,7 @@ mod tests {
                     kind: cmbl::FrameKind::Message,
                     sequence: index as u64 + 1,
                     counter: *counter,
-                    ciphertext: TransportKey::from_bytes([3; 32])
+                    ciphertext: TransportKey::new([3; 32], [103; 32])
                         .wrap(&[6; 16], &[index as u8])
                         .unwrap(),
                 })
@@ -676,7 +676,7 @@ mod tests {
     #[test]
     fn only_frames_with_a_companion_are_joins() {
         let mut room = outcome([4; 16], &[7, 8, 9]);
-        let key = TransportKey::from_bytes([3; 32]);
+        let key = TransportKey::new([3; 32], [103; 32]);
         room.frames[1].ciphertext = key
             .wrap(&[6; 16], &ctnd::pack_ordered(&[0, 1, 2], &[9, 9]))
             .unwrap();
@@ -686,7 +686,7 @@ mod tests {
         room.frames[2].ciphertext = key.wrap(&[6; 16], &broken).unwrap();
         // The relay sees only ciphertext: a plain companion frame is no join.
         assert_eq!(
-            joins_in(&room, &[6; 16], &TransportKey::from_bytes([4; 32])),
+            joins_in(&room, &[6; 16], &TransportKey::new([4; 32], [104; 32])),
             vec![]
         );
         assert_eq!(
@@ -705,21 +705,21 @@ mod tests {
         // Frame 0 is the newcomer's own commit (counter 7); a relayed frame
         // at 7 follows; the ordered context commit is the first frame at 8.
         let room = outcome([1; 16], &[7, 7, 8, 8]);
-        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::from_bytes([3; 32])), Ok(Some(vec![2])));
-        assert_eq!(context_frame(&room, &[1; 16], 9, &[6; 16], &TransportKey::from_bytes([3; 32])), Ok(None));
+        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::new([3; 32], [103; 32])), Ok(Some(vec![2])));
+        assert_eq!(context_frame(&room, &[1; 16], 9, &[6; 16], &TransportKey::new([3; 32], [103; 32])), Ok(None));
     }
 
     #[test]
     fn another_ordering_generation_is_a_reconcile_not_a_commit() {
         let room = outcome([2; 16], &[8]);
-        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::from_bytes([3; 32])), Err(Error::Reconcile));
+        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::new([3; 32], [103; 32])), Err(Error::Reconcile));
     }
 
     #[test]
     fn the_context_commit_is_never_a_room_state_frame() {
         let mut room = outcome([1; 16], &[8, 8]);
         room.frames[0].kind = cmbl::FrameKind::RoomState { to: 1 };
-        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::from_bytes([3; 32])), Ok(Some(vec![1])));
+        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::new([3; 32], [103; 32])), Ok(Some(vec![1])));
     }
 
     #[test]

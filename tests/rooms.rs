@@ -45,7 +45,7 @@ async fn without_a_room_pass_neither_presence_nor_ordering_is_sent() {
         companion: vec![],
     };
     assert_eq!(
-        RoomOrdering::new(&board, &cbrd::TransportKey::from_bytes([9; 32]))
+        RoomOrdering::new(&board, &cbrd::TransportKey::new([9; 32], [109; 32]))
             .order(&request)
             .await
             .err(),
@@ -64,7 +64,7 @@ impl cbrd::Pause for Never {
 async fn without_a_room_pass_the_context_feed_reads_nothing() {
     use cthr::ContextFeed;
     let board = board();
-    let key = cbrd::TransportKey::from_bytes([9; 32]);
+    let key = cbrd::TransportKey::new([9; 32], [109; 32]);
     let mut feed = cbrd::RoomFeed::new(&board, [1; 16], [3; 16], 1, Never, &key);
     assert_eq!(feed.context_commit(7).await.err(), Some(Error::Unavailable));
 }
