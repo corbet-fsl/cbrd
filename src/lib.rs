@@ -10,6 +10,7 @@ pub mod join_seal;
 mod policy;
 mod profile;
 mod rooms;
+mod transport;
 mod vouched;
 pub use authority::{BoardAuthority, Contacts, Devices};
 pub use cgrd;
@@ -42,6 +43,7 @@ pub use rooms::{
     JoinFrame, JoinsRead, Pause, RoomAdmitInput, RoomAdmitted, RoomCompanion, RoomFeed,
     RoomJoinInput, RoomJoined, RoomOrdering,
 };
+pub use transport::{RoomState, TransportKey};
 pub use vouched::{FORMER_MEMBER, Sponsor, vouched_by_line};
 pub use {cnvl, cpfl, cshm};
 /// A bounded locally rechecked page; original owner types carry its evidence.
