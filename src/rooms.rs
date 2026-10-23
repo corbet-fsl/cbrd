@@ -236,6 +236,33 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
         Ok(())
     }
 
+    /// Relay a leave notice: the member's own signed Groups `Leave` request,
+    /// sealed under the room's transport key of the epoch the member holds. The
+    /// relay sees ciphertext of the same kind as every other member frame. An
+    /// exact retry yields the same frame.
+    pub async fn relay_room_notice(
+        &self,
+        room: cmbl::Id,
+        key: &TransportKey,
+        companion: &RoomCompanion,
+    ) -> Result<(), clnk::ErrorCode> {
+        let companion = companion.encode().ok_or(clnk::ErrorCode::Capacity)?;
+        let wrapped = key
+            .wrap(&room, &ctnd::pack_ordered(LEAVE_MARK, &companion))
+            .ok_or(clnk::ErrorCode::Capacity)?;
+        self.link
+            .execute_room(cmbl::Request {
+                room,
+                operation: state_operation(&room, b"notice", &wrapped),
+                action: cmbl::Action::Relay {
+                    ciphertext: wrapped,
+                    kind: cmbl::FrameKind::Message,
+                },
+            })
+            .await?;
+        Ok(())
+    }
+
     /// The room secrets after relay sequence `after` that open under `key`
     /// (the transport key of this member's current epoch). Frames of another
     /// epoch or of another kind do not open and are skipped.
@@ -320,6 +347,9 @@ pub enum FrameContent {
     Commit(OrderedCommit),
     /// A room secret (an MLS application message).
     Secret,
+    /// A member's leave notice: its signed Groups `Leave` (the companion bytes),
+    /// relayed unordered so that another member commits the MLS removal.
+    Notice(Vec<u8>),
 }
 
 impl RoomFrame {
@@ -331,6 +361,9 @@ impl RoomFrame {
             return Some(FrameContent::Secret);
         }
         let (commit, companion) = ctnd::unpack_ordered(&plain)?;
+        if commit == LEAVE_MARK && !companion.is_empty() {
+            return Some(FrameContent::Notice(companion.to_vec()));
+        }
         Some(FrameContent::Commit(OrderedCommit {
             commit: commit.to_vec(),
             companion: companion.to_vec(),
@@ -413,7 +446,8 @@ fn joins_in(outcome: &cmbl::Outcome, room: &cmbl::Id, key: &TransportKey) -> Vec
         .filter_map(|frame| {
             let plain = key.unwrap(room, &frame.ciphertext)?;
             let (commit, companion) = ctnd::unpack_ordered(&plain)?;
-            (!companion.is_empty()).then(|| JoinFrame {
+            (!companion.is_empty() && commit != LEAVE_MARK && !RoomCompanion::is_leave(companion))
+                .then(|| JoinFrame {
                 ordering: outcome.ordering,
                 counter: frame.counter,
                 commit: commit.to_vec(),
@@ -422,6 +456,13 @@ fn joins_in(outcome: &cmbl::Outcome, room: &cmbl::Id, key: &TransportKey) -> Vec
         })
         .collect()
 }
+
+/// The commit slot of a leave notice. A notice is NOT an MLS commit: it carries
+/// a member's own signed Groups `Leave` (the companion) so that another member
+/// can commit the MLS removal. It rides in the existing ordered-frame shape
+/// (`ctnd::pack_ordered`), sealed under the epoch transport key and relayed
+/// unordered, exactly like a room secret: no new frame kind and no new key.
+pub const LEAVE_MARK: &[u8] = b"cbrd.room.leave.v1\0";
 
 /// Marks a relayed frame as a room secret: one MLS application message sent to
 /// the whole room (row 14.5). An ordered commit never starts with it: a bare MLS
@@ -708,6 +749,12 @@ impl RoomCompanion {
     pub fn decode(bytes: &[u8]) -> Option<Self> {
         serde_json::from_slice(bytes).ok()
     }
+    /// Whether these companion bytes carry a Groups `Leave` (a leave notice or
+    /// the member commit that removes the leaver) and not a newcomer's `Join`.
+    pub fn is_leave(bytes: &[u8]) -> bool {
+        Self::decode(bytes)
+            .is_some_and(|companion| matches!(companion.request.command, cgrp::Command::Leave { .. }))
+    }
 }
 
 /// Everything one admission needs from the admitting member's device. The Board
@@ -822,6 +869,165 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             snapshot,
         })
     }
+}
+
+/// Everything one removal needs from the committing member's device. The Board
+/// adds the room transport that orders the member commit.
+pub struct RoomRemoveInput<'a, K, B: cwst::backend::Backend, S, A, C> {
+    pub keys: &'a mut K,
+    pub clock: &'a mut C,
+    pub store: &'a mut cwst::Store<B>,
+    /// This member's Threads for the room.
+    pub threads: &'a cthr::Threads,
+    /// The Groups `Leave` prepared from the leaver's signed request and consent.
+    pub groups: cgrp::Candidate,
+    /// The leaver's signed request (the companion bytes the commit authenticates).
+    pub companion: &'a [u8],
+    pub room: cmbl::Id,
+    /// The ordering generation and the counter in force the commit is ordered at.
+    pub ordering: cmbl::Id,
+    pub expected: u64,
+    pub source: &'a S,
+    pub authority: &'a A,
+    pub operation: [u8; 32],
+    /// The room's transport key at the epoch the commit is made for.
+    pub transport: &'a TransportKey,
+}
+
+impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
+    /// Remove a member who announced its own leave: build the member commit that
+    /// takes its leaf out of the tree and installs the roster without it, order
+    /// it with the leaver's signed request as its companion, and publish Groups
+    /// and Threads in one durable write. Nothing is published before the commit
+    /// was ordered. No member can be removed this way without that member's own
+    /// signed consent: the Groups decision does not exist without it.
+    pub async fn remove_room<K, B, S, A, C>(
+        &self,
+        input: RoomRemoveInput<'_, K, B, S, A, C>,
+    ) -> Result<RoomAdmitted, Error>
+    where
+        K: cthr::keys::Custody,
+        B: cwst::backend::Backend,
+        S: cgrp::PolicySource,
+        A: cgrp::Authority,
+        C: ckmg::Clock,
+    {
+        let RoomRemoveInput {
+            keys,
+            clock,
+            store,
+            threads,
+            groups,
+            companion,
+            room,
+            ordering,
+            expected,
+            source,
+            authority,
+            operation,
+            transport,
+        } = input;
+        let (candidate, wire) = {
+            let effects = groups.prepare_effects();
+            let decision = effects.first().ok_or(Error::Authority)?;
+            let candidate = threads
+                .update_room(keys, store, decision, clock)
+                .await
+                .map_err(thread_error)?;
+            let wire = candidate
+                .events()
+                .iter()
+                .find_map(|event| match event {
+                    cthr::Event::MembershipCommit { bytes } => Some(bytes.clone()),
+                    _ => None,
+                })
+                .ok_or(Error::Authority)?;
+            (candidate, wire)
+        };
+        RoomOrdering::new(self, transport)
+            .order(&ctnd::OrderRequest {
+                room,
+                ordering,
+                expected,
+                encrypted_commit: wire,
+                companion: companion.to_vec(),
+            })
+            .await?;
+        let (committed, snapshot, _) = candidate
+            .commit_groups(keys, groups, store, operation, (source, authority), clock)
+            .await
+            .map_err(thread_error)?;
+        Ok(RoomAdmitted {
+            committed,
+            snapshot,
+        })
+    }
+}
+
+/// Everything applying a removal another member already ordered needs. Nothing
+/// is ordered or sent.
+pub struct RoomApplyRemovalInput<'a, K, B: cwst::backend::Backend, S, A, C> {
+    pub keys: &'a mut K,
+    pub clock: &'a mut C,
+    pub store: &'a mut cwst::Store<B>,
+    /// This member's Threads for the room, at the epoch the commit was made for.
+    pub threads: &'a cthr::Threads,
+    /// The Groups `Leave` prepared from the signed request in the commit's companion.
+    pub groups: cgrp::Candidate,
+    /// The member commit that removes the leaver.
+    pub commit: &'a [u8],
+    pub source: &'a S,
+    pub authority: &'a A,
+    pub operation: [u8; 32],
+}
+
+/// Apply a removal another member ordered: authenticate the member commit
+/// against this member's exact Groups/MLS state (it must remove exactly the
+/// leaver the signed Groups decision names, install the matching context and
+/// come from a remaining certified member) and publish Groups and Threads in
+/// one write. A commit made for another epoch is out of order and refused
+/// before anything is processed.
+pub async fn apply_room_removal<K, B, S, A, C>(
+    input: RoomApplyRemovalInput<'_, K, B, S, A, C>,
+) -> Result<RoomAdmitted, Error>
+where
+    K: cthr::keys::Custody,
+    B: cwst::backend::Backend,
+    S: cgrp::PolicySource,
+    A: cgrp::Authority,
+    C: ckmg::Clock,
+{
+    let RoomApplyRemovalInput {
+        keys,
+        clock,
+        store,
+        threads,
+        groups,
+        commit,
+        source,
+        authority,
+        operation,
+    } = input;
+    let epoch = threads.epoch().map_err(thread_error)?;
+    if cthr::wire_epoch(commit).map_err(|_| Error::Authority)? != epoch {
+        return Err(Error::Authority);
+    }
+    let candidate = {
+        let effects = groups.prepare_effects();
+        let decision = effects.first().ok_or(Error::Authority)?;
+        threads
+            .receive_room_update(keys, store, decision, commit, clock)
+            .await
+            .map_err(thread_error)?
+    };
+    let (committed, snapshot, _) = candidate
+        .commit_groups(keys, groups, store, operation, (source, authority), clock)
+        .await
+        .map_err(thread_error)?;
+    Ok(RoomAdmitted {
+        committed,
+        snapshot,
+    })
 }
 
 /// Everything one catch-up through a completed admission needs: the newcomer's
