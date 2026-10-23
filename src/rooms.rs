@@ -258,6 +258,89 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             through: outcome.through,
         })
     }
+
+    /// Every member frame the room still holds, as the relay stores it: opaque
+    /// ciphertext sealed under some epoch's transport key. This is the same
+    /// room Read the admission loop makes; the caller opens a frame only with
+    /// the key of the epoch it holds ([`RoomFrame::open`]). `gap` is true when
+    /// the relay no longer holds the room's oldest frames.
+    pub async fn room_frames(&self, room: cmbl::Id) -> Result<RoomFrames, clnk::ErrorCode> {
+        let outcome = self
+            .link
+            .execute_room(cmbl::Request {
+                room,
+                operation: state_operation(&room, b"frames", &[]),
+                action: cmbl::Action::Read { after: 0 },
+            })
+            .await?;
+        Ok(RoomFrames {
+            ordering: outcome.ordering,
+            gap: outcome.gap,
+            frames: outcome
+                .frames
+                .iter()
+                .filter(|frame| frame.kind == cmbl::FrameKind::Message)
+                .map(|frame| RoomFrame {
+                    sequence: frame.sequence,
+                    counter: frame.counter,
+                    ciphertext: frame.ciphertext.clone(),
+                })
+                .collect(),
+        })
+    }
+}
+
+/// One member frame of a room, still sealed. Its sequence orders the room's
+/// traffic; only the key of the epoch it was sealed in opens it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RoomFrame {
+    pub sequence: u64,
+    pub counter: u64,
+    ciphertext: Vec<u8>,
+}
+
+/// The ordered commit inside a frame: the MLS commit and, for a newcomer's
+/// external commit, the signed companion it authenticates (empty otherwise).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OrderedCommit {
+    pub commit: Vec<u8>,
+    pub companion: Vec<u8>,
+}
+
+/// What a frame is for a member holding `key`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FrameContent {
+    /// An ordered commit (join or member commit).
+    Commit(OrderedCommit),
+    /// A room secret (an MLS application message).
+    Secret,
+}
+
+impl RoomFrame {
+    /// Open this frame under `key`, the transport key of the epoch the caller
+    /// holds. `None` when it does not open (another epoch, or not ours).
+    pub fn open(&self, room: &cmbl::Id, key: &TransportKey) -> Option<FrameContent> {
+        let plain = key.unwrap(room, &self.ciphertext)?;
+        if plain.starts_with(SECRET_MAGIC) {
+            return Some(FrameContent::Secret);
+        }
+        let (commit, companion) = ctnd::unpack_ordered(&plain)?;
+        Some(FrameContent::Commit(OrderedCommit {
+            commit: commit.to_vec(),
+            companion: companion.to_vec(),
+        }))
+    }
+}
+
+/// The member frames a room holds, oldest first.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RoomFrames {
+    /// The ordering generation the frames' counters belong to.
+    pub ordering: cmbl::Id,
+    /// The relay dropped the room's oldest frames: a member that needs them
+    /// cannot catch up from the room.
+    pub gap: bool,
+    pub frames: Vec<RoomFrame>,
 }
 
 fn link_error(error: clnk::ErrorCode) -> Error {
@@ -733,6 +816,84 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             snapshot,
         })
     }
+}
+
+/// Everything one catch-up through a completed admission needs: the newcomer's
+/// ordered external commit with its companion, the member commit that installed
+/// the canonical context after it, and the Groups join the companion decides.
+/// Nothing is ordered or sent: the admission was made by another member and the
+/// room already holds both commits.
+pub struct RoomApplyInput<'a, K, B: cwst::backend::Backend, S, A, C> {
+    pub keys: &'a mut K,
+    pub clock: &'a mut C,
+    pub store: &'a mut cwst::Store<B>,
+    /// This member's Threads for the room, at the epoch the join was made for.
+    pub threads: &'a cthr::Threads,
+    /// The Groups join prepared from the newcomer's request and consent.
+    pub groups: cgrp::Candidate,
+    /// The newcomer's external commit with its companion.
+    pub join: &'a OrderedCommit,
+    /// The context-installing member commit that followed it.
+    pub context: &'a [u8],
+    pub source: &'a S,
+    pub authority: &'a A,
+    pub operation: [u8; 32],
+}
+
+/// Apply an admission another member already ordered: authenticate the
+/// newcomer's external commit against this member's exact Groups/MLS state, then
+/// the member commit that installs the canonical context, and publish Groups and
+/// Threads in one write. Both commits must be made for exactly the epochs this
+/// member and its successor hold (a frame of another epoch is out of order and
+/// refused before anything is processed); every other check is the one
+/// [`Board::admit_room`] makes, because it is the same Threads functions.
+pub async fn apply_room_admission<K, B, S, A, C>(
+    input: RoomApplyInput<'_, K, B, S, A, C>,
+) -> Result<RoomAdmitted, Error>
+where
+    K: cthr::keys::Custody,
+    B: cwst::backend::Backend,
+    S: cgrp::PolicySource,
+    A: cgrp::Authority,
+    C: ckmg::Clock,
+{
+    let RoomApplyInput {
+        keys,
+        clock,
+        store,
+        threads,
+        groups,
+        join,
+        context,
+        source,
+        authority,
+        operation,
+    } = input;
+    let epoch = threads.epoch().map_err(thread_error)?;
+    let made_for = |wire: &[u8]| cthr::wire_epoch(wire).map_err(|_| Error::Authority);
+    if made_for(&join.commit)? != epoch || made_for(context)? != epoch.saturating_add(1) {
+        return Err(Error::Authority);
+    }
+    let candidate = {
+        let effects = groups.prepare_effects();
+        let decision = effects.first().ok_or(Error::Authority)?;
+        let admission = threads
+            .receive_room_join(keys, store, decision, &join.commit, &join.companion, clock)
+            .await
+            .map_err(thread_error)?;
+        admission
+            .receive_context(keys, decision, context, clock)
+            .await
+            .map_err(thread_error)?
+    };
+    let (committed, snapshot, _) = candidate
+        .commit_groups(keys, groups, store, operation, (source, authority), clock)
+        .await
+        .map_err(thread_error)?;
+    Ok(RoomAdmitted {
+        committed,
+        snapshot,
+    })
 }
 
 #[cfg(test)]
