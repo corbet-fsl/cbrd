@@ -1015,10 +1015,18 @@ where
     let candidate = {
         let effects = groups.prepare_effects();
         let decision = effects.first().ok_or(Error::Authority)?;
+        // A commit the room already holds that fails the MLS or Groups checks is
+        // refused for good, not retried: only storage, ordering and availability
+        // failures are transient.
         threads
             .receive_room_update(keys, store, decision, commit, clock)
             .await
-            .map_err(thread_error)?
+            .map_err(|error| match error {
+                cthr::Error::Storage | cthr::Error::Conflict | cthr::Error::Unavailable => {
+                    thread_error(error)
+                }
+                _ => Error::Authority,
+            })?
     };
     let (committed, snapshot, _) = candidate
         .commit_groups(keys, groups, store, operation, (source, authority), clock)
