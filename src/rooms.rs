@@ -220,9 +220,7 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
     ) -> Result<(), clnk::ErrorCode> {
         let mut plain = SECRET_MAGIC.to_vec();
         plain.extend_from_slice(message);
-        let wrapped = key
-            .wrap(&room, &plain)
-            .ok_or(clnk::ErrorCode::Capacity)?;
+        let wrapped = key.wrap(&room, &plain).ok_or(clnk::ErrorCode::Capacity)?;
         self.link
             .execute_room(cmbl::Request {
                 room,
@@ -554,7 +552,9 @@ impl<T: clnk::Transport, R: clnk::Transport, P: Pause> cthr::ContextFeed for Roo
                     })
                     .await
                     .map_err(link_error)?;
-                if let Some(commit) = context_frame(&outcome, &self.ordering, wanted, &self.room, self.key)? {
+                if let Some(commit) =
+                    context_frame(&outcome, &self.ordering, wanted, &self.room, self.key)?
+                {
                     return Ok(commit);
                 }
             }
@@ -995,21 +995,57 @@ mod tests {
         // Frame 0 is the newcomer's own commit (counter 7); a relayed frame
         // at 7 follows; the ordered context commit is the first frame at 8.
         let room = outcome([1; 16], &[7, 7, 8, 8]);
-        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::new([3; 32], [103; 32])), Ok(Some(vec![2])));
-        assert_eq!(context_frame(&room, &[1; 16], 9, &[6; 16], &TransportKey::new([3; 32], [103; 32])), Ok(None));
+        assert_eq!(
+            context_frame(
+                &room,
+                &[1; 16],
+                8,
+                &[6; 16],
+                &TransportKey::new([3; 32], [103; 32])
+            ),
+            Ok(Some(vec![2]))
+        );
+        assert_eq!(
+            context_frame(
+                &room,
+                &[1; 16],
+                9,
+                &[6; 16],
+                &TransportKey::new([3; 32], [103; 32])
+            ),
+            Ok(None)
+        );
     }
 
     #[test]
     fn another_ordering_generation_is_a_reconcile_not_a_commit() {
         let room = outcome([2; 16], &[8]);
-        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::new([3; 32], [103; 32])), Err(Error::Reconcile));
+        assert_eq!(
+            context_frame(
+                &room,
+                &[1; 16],
+                8,
+                &[6; 16],
+                &TransportKey::new([3; 32], [103; 32])
+            ),
+            Err(Error::Reconcile)
+        );
     }
 
     #[test]
     fn the_context_commit_is_never_a_room_state_frame() {
         let mut room = outcome([1; 16], &[8, 8]);
         room.frames[0].kind = cmbl::FrameKind::RoomState { to: 1 };
-        assert_eq!(context_frame(&room, &[1; 16], 8, &[6; 16], &TransportKey::new([3; 32], [103; 32])), Ok(Some(vec![1])));
+        assert_eq!(
+            context_frame(
+                &room,
+                &[1; 16],
+                8,
+                &[6; 16],
+                &TransportKey::new([3; 32], [103; 32])
+            ),
+            Ok(Some(vec![1]))
+        );
     }
 
     #[test]

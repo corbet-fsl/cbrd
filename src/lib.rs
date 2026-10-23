@@ -28,12 +28,12 @@ pub use exchange::{
 };
 pub use group_invite::{
     Committed as GroupCommitted, INVITE_VERSION, Invitation, Message as GroupMessage,
-    consent_handles,
-    Proposal as GroupProposal, commit as commit_group_proposal, propose as propose_group_command,
+    Proposal as GroupProposal, commit as commit_group_proposal, consent_handles,
+    propose as propose_group_command,
 };
 pub use groups::{
-    CONSENT_SECONDS, GroupOwner, Intent as GroupIntent, JoinParent, PolicyAt, PortFuture, Published, Signed,
-    command_members, created_group, execute as execute_group_command,
+    CONSENT_SECONDS, GroupOwner, Intent as GroupIntent, JoinParent, PolicyAt, PortFuture,
+    Published, Signed, command_members, created_group, execute as execute_group_command,
     execute_intent as execute_group_intent, prepare_command as prepare_group_command,
     prepare_intent as prepare_group_intent, prepare_join_from_state, required_consents,
 };
