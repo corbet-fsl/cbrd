@@ -208,6 +208,56 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
             .await?;
         Ok(outcome.active_connections)
     }
+
+    /// Relay one room secret (an MLS application message) to the room, sealed
+    /// under the room's transport key of the epoch it was sent in. The relay
+    /// sees ciphertext only; an exact retry yields the same frame.
+    pub async fn relay_room_secret(
+        &self,
+        room: cmbl::Id,
+        key: &TransportKey,
+        message: &[u8],
+    ) -> Result<(), clnk::ErrorCode> {
+        let mut plain = SECRET_MAGIC.to_vec();
+        plain.extend_from_slice(message);
+        let wrapped = key
+            .wrap(&room, &plain)
+            .ok_or(clnk::ErrorCode::Capacity)?;
+        self.link
+            .execute_room(cmbl::Request {
+                room,
+                operation: state_operation(&room, b"secret", &wrapped),
+                action: cmbl::Action::Relay {
+                    ciphertext: wrapped,
+                    kind: cmbl::FrameKind::Message,
+                },
+            })
+            .await?;
+        Ok(())
+    }
+
+    /// The room secrets after relay sequence `after` that open under `key`
+    /// (the transport key of this member's current epoch). Frames of another
+    /// epoch or of another kind do not open and are skipped.
+    pub async fn room_secrets(
+        &self,
+        room: cmbl::Id,
+        after: u64,
+        key: &TransportKey,
+    ) -> Result<SecretsRead, clnk::ErrorCode> {
+        let outcome = self
+            .link
+            .execute_room(cmbl::Request {
+                room,
+                operation: state_operation(&room, b"secrets", &after.to_be_bytes()),
+                action: cmbl::Action::Read { after },
+            })
+            .await?;
+        Ok(SecretsRead {
+            secrets: secrets_in(&outcome, &room, key),
+            through: outcome.through,
+        })
+    }
 }
 
 fn link_error(error: clnk::ErrorCode) -> Error {
@@ -247,7 +297,8 @@ fn context_frame(
         .frames
         .iter()
         .filter(|frame| frame.kind == cmbl::FrameKind::Message && frame.counter == wanted)
-        .find_map(|frame| key.unwrap(room, &frame.ciphertext)))
+        .filter_map(|frame| key.unwrap(room, &frame.ciphertext))
+        .find(|plain| !plain.starts_with(SECRET_MAGIC)))
 }
 
 /// A newcomer's ordered external commit with its companion.
@@ -278,6 +329,43 @@ fn joins_in(outcome: &cmbl::Outcome, room: &cmbl::Id, key: &TransportKey) -> Vec
                 counter: frame.counter,
                 commit: commit.to_vec(),
                 companion: companion.to_vec(),
+            })
+        })
+        .collect()
+}
+
+/// Marks a relayed frame as a room secret: one MLS application message sent to
+/// the whole room (row 14.5). An ordered commit never starts with it: a bare MLS
+/// message starts with its protocol version and a companion frame with
+/// `ctnd`'s own magic.
+const SECRET_MAGIC: &[u8] = b"cbrd.room.secret.v1\0";
+
+/// One room secret read from the room: the MLS message and where it stood.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SecretFrame {
+    /// The relay sequence of the frame (a cursor for the next read).
+    pub sequence: u64,
+    /// The MLS application message; only Threads can open it.
+    pub message: Vec<u8>,
+}
+/// Secrets found in one read and the relay sequence the read reached.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SecretsRead {
+    pub secrets: Vec<SecretFrame>,
+    pub through: u64,
+}
+
+fn secrets_in(outcome: &cmbl::Outcome, room: &cmbl::Id, key: &TransportKey) -> Vec<SecretFrame> {
+    outcome
+        .frames
+        .iter()
+        .filter(|frame| frame.kind == cmbl::FrameKind::Message)
+        .filter_map(|frame| {
+            let plain = key.unwrap(room, &frame.ciphertext)?;
+            let message = plain.strip_prefix(SECRET_MAGIC)?;
+            (!message.is_empty()).then(|| SecretFrame {
+                sequence: frame.sequence,
+                message: message.to_vec(),
             })
         })
         .collect()
@@ -671,6 +759,41 @@ mod tests {
                 })
                 .collect(),
         }
+    }
+
+    #[test]
+    fn secrets_open_only_under_the_epoch_key_and_are_never_joins_or_commits() {
+        let key = TransportKey::new([3; 32], [103; 32]);
+        let room = [6; 16];
+        let mut plain = SECRET_MAGIC.to_vec();
+        plain.extend_from_slice(&[7, 7, 7]);
+        let mut frames = outcome([4; 16], &[7, 7, 8]);
+        frames.frames[0].ciphertext = key.wrap(&room, &plain).unwrap();
+        // Another epoch's key opens nothing.
+        frames.frames[1].ciphertext = TransportKey::new([4; 32], [104; 32])
+            .wrap(&room, &plain)
+            .unwrap();
+        // A magic with nothing behind it carries no message.
+        frames.frames[2].ciphertext = key.wrap(&room, SECRET_MAGIC).unwrap();
+        assert_eq!(
+            secrets_in(&frames, &room, &key),
+            vec![SecretFrame {
+                sequence: 1,
+                message: vec![7, 7, 7],
+            }]
+        );
+        // The frame is no join and is never taken for the ordered commit.
+        assert_eq!(joins_in(&frames, &room, &key), vec![]);
+        assert_eq!(
+            context_frame(&frames, &[4; 16], 7, &room, &key).unwrap(),
+            None
+        );
+        // An ordered commit and a secret at the same counter: the commit wins.
+        frames.frames[1].ciphertext = key.wrap(&room, &[0, 1, 2]).unwrap();
+        assert_eq!(
+            context_frame(&frames, &[4; 16], 7, &room, &key).unwrap(),
+            Some(vec![0, 1, 2])
+        );
     }
 
     #[test]

@@ -41,7 +41,7 @@ pub use policy::{SettingsPolicy, project as project_group_policy};
 pub use profile::{Edit, PublishContext, SPONSOR_VISIBLE, block_rules, commit_profile};
 pub use rooms::{
     JoinFrame, JoinsRead, Pause, RoomAdmitInput, RoomAdmitted, RoomCompanion, RoomFeed,
-    RoomJoinInput, RoomJoined, RoomOrdering,
+    RoomJoinInput, RoomJoined, RoomOrdering, SecretFrame, SecretsRead,
 };
 pub use transport::{RoomState, TransportKey};
 pub use vouched::{FORMER_MEMBER, Sponsor, vouched_by_line};
