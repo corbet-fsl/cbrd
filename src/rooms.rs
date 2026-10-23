@@ -273,20 +273,26 @@ impl<T: clnk::Transport, R: clnk::Transport> Board<T, clnk::AnonymousRooms<R>> {
                 action: cmbl::Action::Read { after: 0 },
             })
             .await?;
-        Ok(RoomFrames {
-            ordering: outcome.ordering,
-            gap: outcome.gap,
-            frames: outcome
-                .frames
-                .iter()
-                .filter(|frame| frame.kind == cmbl::FrameKind::Message)
-                .map(|frame| RoomFrame {
-                    sequence: frame.sequence,
-                    counter: frame.counter,
-                    ciphertext: frame.ciphertext.clone(),
-                })
-                .collect(),
-        })
+        Ok(room_frames_in(&outcome))
+    }
+}
+
+/// The member frames of a room read, still sealed: requests and sealed room
+/// state are no member traffic and are left out.
+fn room_frames_in(outcome: &cmbl::Outcome) -> RoomFrames {
+    RoomFrames {
+        ordering: outcome.ordering,
+        gap: outcome.gap,
+        frames: outcome
+            .frames
+            .iter()
+            .filter(|frame| frame.kind == cmbl::FrameKind::Message)
+            .map(|frame| RoomFrame {
+                sequence: frame.sequence,
+                counter: frame.counter,
+                ciphertext: frame.ciphertext.clone(),
+            })
+            .collect(),
     }
 }
 
@@ -1022,5 +1028,72 @@ mod tests {
         );
         assert_eq!(answers_in(&room, &[1; 16], 9), Ok(vec![]));
         assert_eq!(answers_in(&room, &[9; 16], 1), Err(Error::Reconcile));
+    }
+
+    #[test]
+    fn room_frames_keep_only_member_traffic_and_carry_the_relays_gap_flag() {
+        let mut room = outcome([4; 16], &[7, 7, 8, 9]);
+        room.frames[1].kind = cmbl::FrameKind::JoinRequest;
+        room.frames[2].kind = cmbl::FrameKind::RoomState { to: 1 };
+        room.gap = true;
+        let frames = room_frames_in(&room);
+        assert_eq!(frames.ordering, [4; 16]);
+        assert!(frames.gap);
+        assert_eq!(
+            frames
+                .frames
+                .iter()
+                .map(|frame| (frame.sequence, frame.counter))
+                .collect::<Vec<_>>(),
+            vec![(1, 7), (4, 9)]
+        );
+        room.gap = false;
+        assert!(!room_frames_in(&room).gap);
+    }
+
+    #[test]
+    fn a_frame_opens_as_a_commit_or_a_secret_only_under_its_own_epochs_key() {
+        let room = [6; 16];
+        let (key, next) = (
+            TransportKey::new([3; 32], [103; 32]),
+            TransportKey::new([4; 32], [104; 32]),
+        );
+        let mut secret = SECRET_MAGIC.to_vec();
+        secret.extend_from_slice(&[7, 7]);
+        let mut frames = outcome([4; 16], &[7, 7, 8, 8]);
+        frames.frames[0].ciphertext = key
+            .wrap(&room, &ctnd::pack_ordered(&[1, 2, 3], &[9, 9]))
+            .unwrap();
+        frames.frames[1].ciphertext = key.wrap(&room, &secret).unwrap();
+        // The member commit of the next epoch is sealed under the next key.
+        frames.frames[2].ciphertext = next
+            .wrap(&room, &ctnd::pack_ordered(&[4, 5, 6], &[]))
+            .unwrap();
+        frames.frames[3].ciphertext = vec![0; 40];
+        let read = room_frames_in(&frames);
+        assert_eq!(
+            read.frames[0].open(&room, &key),
+            Some(FrameContent::Commit(OrderedCommit {
+                commit: vec![1, 2, 3],
+                companion: vec![9, 9],
+            }))
+        );
+        assert_eq!(read.frames[1].open(&room, &key), Some(FrameContent::Secret));
+        // A member that stayed in the old epoch (a removed member holds nothing
+        // else) opens nothing of the next epoch, and the next epoch's key opens
+        // nothing of the old one; junk opens under no key.
+        assert_eq!(read.frames[2].open(&room, &key), None);
+        assert_eq!(read.frames[0].open(&room, &next), None);
+        assert_eq!(read.frames[1].open(&room, &next), None);
+        assert_eq!(read.frames[3].open(&room, &key), None);
+        assert_eq!(
+            read.frames[2].open(&room, &next),
+            Some(FrameContent::Commit(OrderedCommit {
+                commit: vec![4, 5, 6],
+                companion: vec![],
+            }))
+        );
+        // The same ciphertext is another room's noise.
+        assert_eq!(read.frames[0].open(&[7; 16], &key), None);
     }
 }
