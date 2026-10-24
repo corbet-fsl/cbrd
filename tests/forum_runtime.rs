@@ -301,7 +301,10 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
         (settings.heartbeat_ms, settings.lease_ms),
         (crbk::FORUM_HEARTBEAT_MS, crbk::FORUM_LEASE_MS)
     );
-    assert_eq!(settings.room_passes_per_epoch, 4);
+    assert_eq!(
+        settings.room_passes_per_epoch,
+        crbk::FORUM_ROOM_PASSES_PER_EPOCH
+    );
     assert_eq!(settings.revision, 1);
     assert!(!settings.publication.is_empty());
     enter(&mut a, &alice).await;
