@@ -217,7 +217,7 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
             maximum_snapshot_age: 300,
             request_bytes: 1_048_576,
             presence: cswb::Limits {
-                lease_ms: 10000,
+                lease_ms: 60000,
                 publication_bytes: cpfl::MAX_PROFILE_BYTES,
                 ciphertext_bytes: cpfl::MAX_PROFILE_BYTES,
             },
@@ -293,8 +293,14 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
         .await
         .unwrap();
     let settings = a.settings().await.unwrap();
-    assert_eq!(settings.minimum_client_version, "0.1.0");
-    assert_eq!((settings.heartbeat_ms, settings.lease_ms), (3000, 10000));
+    assert_eq!(
+        settings.minimum_client_version,
+        crbk::FORUM_MINIMUM_CLIENT_VERSION
+    );
+    assert_eq!(
+        (settings.heartbeat_ms, settings.lease_ms),
+        (crbk::FORUM_HEARTBEAT_MS, crbk::FORUM_LEASE_MS)
+    );
     assert_eq!(settings.room_passes_per_epoch, 4);
     assert_eq!(settings.revision, 1);
     assert!(!settings.publication.is_empty());
