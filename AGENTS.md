@@ -9,5 +9,5 @@ acceptance. Device code requires native and executed wasm vectors.
 First-party Git dependencies follow main, one locked revision per crate.
 CI refreshes one snapshot, then uses --locked everywhere. Exact 100% reachable
 line AND branch coverage; only reviewed justified unreachable exclusions.
-No workstation Cargo, package publication, paid operations or attribution
+No local Cargo, package publication, paid operations or attribution
 trailers. Keep CI bounded. Every backend needs independent acceptance review.
