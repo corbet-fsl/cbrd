@@ -328,7 +328,7 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
         )
         .unwrap();
     let current = charter.current(now).unwrap();
-    let policy = current.admission_policy(ACTION, now, 300).unwrap();
+    let policy = current.current_admission_policy(ACTION, now).unwrap();
     let verification = Verification {
         policy: &policy,
         signed_schema: current.publication(cchr::Kind::Schema).signed_bytes(),
@@ -524,7 +524,7 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
         .install(&serde_json::to_vec(&revoked).unwrap(), now)
         .unwrap();
     let current = charter.current(now).unwrap();
-    let policy = current.admission_policy(ACTION, now, 300).unwrap();
+    let policy = current.current_admission_policy(ACTION, now).unwrap();
     let verification = Verification {
         policy: &policy,
         signed_schema: current.publication(cchr::Kind::Schema).signed_bytes(),
@@ -556,7 +556,7 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
         .await
         .unwrap();
     let current = charter.current(now + 1).unwrap();
-    let policy = current.admission_policy(ACTION, now + 1, 300).unwrap();
+    let policy = current.current_admission_policy(ACTION, now + 1).unwrap();
     let verification = Verification {
         policy: &policy,
         signed_schema: current.publication(cchr::Kind::Schema).signed_bytes(),

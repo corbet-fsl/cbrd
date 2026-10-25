@@ -122,7 +122,7 @@ impl Fixture {
             .await
             .unwrap();
         let current = charter.current(now).unwrap();
-        let policy = current.admission_policy(ACTION, now, 300).unwrap();
+        let policy = current.current_admission_policy(ACTION, now).unwrap();
         let signed_schema = current.publication(cchr::Kind::Schema).signed_bytes();
         // Real maintained conversion of this test device; production custody is
         // lent only by current Keys, never constructed from a request body.

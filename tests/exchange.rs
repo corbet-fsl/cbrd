@@ -314,7 +314,7 @@ async fn publication_revisions_follow_the_commit_and_blocks_travel_as_rules() {
         &alice.store,
         &alice.binding,
         cpfl::Validation {
-            policy: current.admission_policy(ACTION, NOW, 300).unwrap(),
+            policy: current.current_admission_policy(ACTION, NOW).unwrap(),
             signed_schema: current.publication(cchr::Kind::Schema).signed_bytes(),
             contact: &clean,
         },
@@ -547,7 +547,7 @@ fn forced_request(
     b_pub: &[u8],
 ) -> Request {
     let current = read.charter;
-    let policy = current.admission_policy(ACTION, NOW, 300).unwrap();
+    let policy = current.current_admission_policy(ACTION, NOW).unwrap();
     let verification = cbrd::Verification {
         policy: &policy,
         signed_schema: current.publication(cchr::Kind::Schema).signed_bytes(),
