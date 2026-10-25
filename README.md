@@ -63,8 +63,8 @@ original member MLS and full qualified source gates still remain integration wor
 
 The `ReadContext` adapter is the cmsg-facing completion path. It borrows the
 actual unlocked Store, current Keys Binding, Foyer's one VerifiedCharter and
-original contact detector; `ReadPolicy` requires the trusted deployment action
-and maximum snapshot age in seconds. `finish_search_committed`,
+original contact detector; `ReadPolicy` requires the trusted deployment action; the
+snapshot age limit is the code constant `cchr::MAXIMUM_SNAPSHOT_AGE`. `finish_search_committed`,
 `finish_watch_committed`, `finish_ciphertext_committed` and
 `read_discovery_committed` load the canonical Profile through its own
 `load_current_committed` port and build current Charter policy inside Board.

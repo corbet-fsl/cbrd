@@ -2,11 +2,10 @@
 use crate::{Board, Discovery, Error, Input, Page, PendingCiphertext, PendingSearch, PendingWatch};
 
 /// Trusted deployment policy, never selected by a public action or publication.
-/// No default action or acceptable snapshot age is inferred.
+/// No default action is inferred. The acceptable snapshot age is not configurable:
+/// it is `cchr::MAXIMUM_SNAPSHOT_AGE`.
 pub struct ReadPolicy<'a> {
     pub admission_action: &'a str,
-    /// Maximum signed snapshot age in Unix seconds, passed to original Charter.
-    pub maximum_snapshot_age: u64,
 }
 
 /// Borrow these owners anew after each external await. The runtime must first
@@ -157,20 +156,14 @@ impl<T: clnk::Transport, R> Board<T, R> {
             {
                 return Err(Error::Scope);
             }
-            if context.policy.admission_action.is_empty()
-                || context.policy.maximum_snapshot_age == 0
-            {
+            if context.policy.admission_action.is_empty() {
                 return Err(Error::Rejected);
             }
             let now = self.link.now_ms().map_err(|_| Error::Unavailable)? / 1000;
             let current_policy = || {
                 context
                     .charter
-                    .admission_policy(
-                        context.policy.admission_action,
-                        now,
-                        context.policy.maximum_snapshot_age,
-                    )
+                    .current_admission_policy(context.policy.admission_action, now)
                     .map_err(|_| Error::Rejected)
             };
             let signed_schema = context

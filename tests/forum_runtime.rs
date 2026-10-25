@@ -130,7 +130,6 @@ fn read_context<'a>(
         charter,
         policy: cbrd::ReadPolicy {
             admission_action: ACTION,
-            maximum_snapshot_age: 300,
         },
         contact: &clean,
     }
@@ -214,7 +213,6 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
             incarnation: "boot".into(),
             admission_action: ACTION.into(),
             origins: vec![ORIGIN.into()],
-            maximum_snapshot_age: 300,
             request_bytes: 1_048_576,
             presence: cswb::Limits {
                 lease_ms: 60000,

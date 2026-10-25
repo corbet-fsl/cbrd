@@ -198,7 +198,6 @@ impl Member {
             charter: self.current,
             policy: ReadPolicy {
                 admission_action: ACTION,
-                maximum_snapshot_age: 300,
             },
             contact: &clean,
         }

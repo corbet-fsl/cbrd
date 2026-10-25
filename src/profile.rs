@@ -72,11 +72,7 @@ impl<T: clnk::Transport, R> Board<T, R> {
         let now = self.link.now_ms().map_err(|_| Error::Unavailable)? / 1000;
         let policy = read
             .charter
-            .admission_policy(
-                read.policy.admission_action,
-                now,
-                read.policy.maximum_snapshot_age,
-            )
+            .current_admission_policy(read.policy.admission_action, now)
             .map_err(|_| Error::Rejected)?;
         candidate
             .authorize(cpfl::Validation {
@@ -109,17 +105,13 @@ impl<T: clnk::Transport, R> Board<T, R> {
         {
             return Err(Error::Scope);
         }
-        if read.policy.admission_action.is_empty() || read.policy.maximum_snapshot_age == 0 {
+        if read.policy.admission_action.is_empty() {
             return Err(Error::Rejected);
         }
         let now = self.link.now_ms().map_err(|_| Error::Unavailable)? / 1000;
         let policy = || {
             read.charter
-                .admission_policy(
-                    read.policy.admission_action,
-                    now,
-                    read.policy.maximum_snapshot_age,
-                )
+                .current_admission_policy(read.policy.admission_action, now)
                 .map_err(|_| Error::Rejected)
         };
         let signed_schema = read.charter.publication(cchr::Kind::Schema).signed_bytes();
