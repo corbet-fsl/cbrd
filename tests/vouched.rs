@@ -33,11 +33,20 @@ fn a_verified_sponsor_is_named_and_everything_else_is_not() {
     assert_eq!(line.as_deref(), Some("vouched for by sponsorname"));
     // Wrong community or member: the signature does not hold.
     let s = sponsor(&key, "sponsorname");
-    assert_eq!(vouched_by_line("other", "alice", &wire, Sponsor::Current(&s)), None);
-    assert_eq!(vouched_by_line("garden", "bob", &wire, Sponsor::Current(&s)), None);
+    assert_eq!(
+        vouched_by_line("other", "alice", &wire, Sponsor::Current(&s)),
+        None
+    );
+    assert_eq!(
+        vouched_by_line("garden", "bob", &wire, Sponsor::Current(&s)),
+        None
+    );
     // A genuine signature from a device that is not the sponsor's.
     let forged = endorsed(&other, "garden", "alice", "sponsorname");
-    assert_eq!(vouched_by_line("garden", "alice", &forged, Sponsor::Current(&s)), None);
+    assert_eq!(
+        vouched_by_line("garden", "alice", &forged, Sponsor::Current(&s)),
+        None
+    );
     // A handle that differs from the charter-certified one.
     assert_eq!(
         vouched_by_line(
@@ -54,7 +63,10 @@ fn a_verified_sponsor_is_named_and_everything_else_is_not() {
         None
     );
     // Unverifiable: no line at all, never a guess.
-    assert_eq!(vouched_by_line("garden", "alice", &wire, Sponsor::Unknown), None);
+    assert_eq!(
+        vouched_by_line("garden", "alice", &wire, Sponsor::Unknown),
+        None
+    );
 }
 
 #[test]
@@ -68,7 +80,13 @@ fn a_departed_sponsor_reads_former_member_only_through_the_retained_lineage() {
     assert!(!gone.contains("sponsorname"));
     // A self-signed endorsement from a device outside the sponsor's lineage is not "a former member".
     let forged = endorsed(&other, "garden", "alice", "sponsorname");
-    assert_eq!(vouched_by_line("garden", "alice", &forged, Sponsor::Departed(&lineage)), None);
+    assert_eq!(
+        vouched_by_line("garden", "alice", &forged, Sponsor::Departed(&lineage)),
+        None
+    );
     // Wrong subject still fails.
-    assert_eq!(vouched_by_line("garden", "bob", &wire, Sponsor::Departed(&lineage)), None);
+    assert_eq!(
+        vouched_by_line("garden", "bob", &wire, Sponsor::Departed(&lineage)),
+        None
+    );
 }

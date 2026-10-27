@@ -67,7 +67,13 @@ impl TransportKey {
         let nonce = self.synthetic_nonce(room, plain);
         let sealed = self
             .cipher()
-            .encrypt(&nonce.into(), Payload { msg: plain, aad: room })
+            .encrypt(
+                &nonce.into(),
+                Payload {
+                    msg: plain,
+                    aad: room,
+                },
+            )
             .ok()?;
         let mut out = Vec::with_capacity(NONCE + sealed.len());
         out.extend_from_slice(&nonce);
@@ -83,7 +89,13 @@ impl TransportKey {
         let (nonce, sealed) = wrapped.split_at(NONCE);
         let nonce: [u8; NONCE] = nonce.try_into().ok()?;
         self.cipher()
-            .decrypt(&nonce.into(), Payload { msg: sealed, aad: room })
+            .decrypt(
+                &nonce.into(),
+                Payload {
+                    msg: sealed,
+                    aad: room,
+                },
+            )
             .ok()
     }
 }
@@ -111,7 +123,9 @@ mod tests {
     #[test]
     fn a_wrapped_frame_opens_only_with_the_key_and_room() {
         let key = key();
-        let wrapped = key.wrap(&[1; 16], b"external commit and companion").unwrap();
+        let wrapped = key
+            .wrap(&[1; 16], b"external commit and companion")
+            .unwrap();
         assert!(!wrapped.windows(8).any(|w| w == b"external"));
         assert_eq!(
             key.unwrap(&[1; 16], &wrapped).unwrap(),
@@ -143,9 +157,8 @@ mod tests {
     #[test]
     fn a_different_frame_gives_a_different_nonce() {
         let key = key();
-        let nonce_of = |room: &[u8; 16], plain: &[u8]| {
-            key.wrap(room, plain).unwrap()[..NONCE].to_vec()
-        };
+        let nonce_of =
+            |room: &[u8; 16], plain: &[u8]| key.wrap(room, plain).unwrap()[..NONCE].to_vec();
         let base = nonce_of(&[1; 16], b"frame one");
         assert_ne!(base, nonce_of(&[1; 16], b"frame two"));
         // One flipped bit anywhere changes the nonce: the hash covers the full plaintext.
@@ -166,8 +179,12 @@ mod tests {
         // frame unopenable while the nonce stays the same.
         let plain = b"separate keys";
         let base = key().wrap(&[1; 16], plain).unwrap();
-        let other_nonce = TransportKey::new([7; 32], [10; 32]).wrap(&[1; 16], plain).unwrap();
-        let other_aead = TransportKey::new([8; 32], [9; 32]).wrap(&[1; 16], plain).unwrap();
+        let other_nonce = TransportKey::new([7; 32], [10; 32])
+            .wrap(&[1; 16], plain)
+            .unwrap();
+        let other_aead = TransportKey::new([8; 32], [9; 32])
+            .wrap(&[1; 16], plain)
+            .unwrap();
         assert_ne!(base[..NONCE], other_nonce[..NONCE]);
         assert_eq!(base[..NONCE], other_aead[..NONCE]);
         assert_eq!(key().unwrap(&[1; 16], &other_nonce).unwrap(), plain);

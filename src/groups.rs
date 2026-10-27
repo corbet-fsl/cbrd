@@ -372,8 +372,7 @@ pub async fn execute<O: GroupOwner + ?Sized>(
     command: Command,
     max_groups: usize,
 ) -> Result<(Vec<GroupView>, Vec<CommittedEffect>)> {
-    let (candidate, current, now, _) =
-        prepare_command(owner, policy, command, max_groups).await?;
+    let (candidate, current, now, _) = prepare_command(owner, policy, command, max_groups).await?;
     let (committed, effects) = owner.publish(candidate, now).await?;
     Ok((committed.views(&current, now)?, effects))
 }

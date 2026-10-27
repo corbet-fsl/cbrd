@@ -42,8 +42,8 @@ pub use profile::{Edit, PublishContext, SPONSOR_VISIBLE, block_rules, commit_pro
 pub use rooms::{
     FrameContent, JoinFrame, JoinsRead, LEAVE_MARK, OrderedCommit, Pause, RoomAdmitInput,
     RoomAdmitted, RoomApplyInput, RoomApplyRemovalInput, RoomCompanion, RoomFeed, RoomFrame,
-    RoomFrames, RoomJoinInput, RoomJoined, RoomOrdering, RoomRemoveInput, SecretFrame,
-    SecretsRead, apply_room_admission, apply_room_removal,
+    RoomFrames, RoomJoinInput, RoomJoined, RoomOrdering, RoomRemoveInput, SecretFrame, SecretsRead,
+    apply_room_admission, apply_room_removal,
 };
 pub use transport::{RoomState, TransportKey};
 pub use vouched::{FORMER_MEMBER, Sponsor, vouched_by_line};

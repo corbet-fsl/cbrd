@@ -446,11 +446,11 @@ fn joins_in(outcome: &cmbl::Outcome, room: &cmbl::Id, key: &TransportKey) -> Vec
             let (commit, companion) = ctnd::unpack_ordered(&plain)?;
             (!companion.is_empty() && commit != LEAVE_MARK && !RoomCompanion::is_leave(companion))
                 .then(|| JoinFrame {
-                ordering: outcome.ordering,
-                counter: frame.counter,
-                commit: commit.to_vec(),
-                companion: companion.to_vec(),
-            })
+                    ordering: outcome.ordering,
+                    counter: frame.counter,
+                    commit: commit.to_vec(),
+                    companion: companion.to_vec(),
+                })
         })
         .collect()
 }
@@ -752,8 +752,9 @@ impl RoomCompanion {
     /// Whether these companion bytes carry a Groups `Leave` (a leave notice or
     /// the member commit that removes the leaver) and not a newcomer's `Join`.
     pub fn is_leave(bytes: &[u8]) -> bool {
-        Self::decode(bytes)
-            .is_some_and(|companion| matches!(companion.request.command, cgrp::Command::Leave { .. }))
+        Self::decode(bytes).is_some_and(|companion| {
+            matches!(companion.request.command, cgrp::Command::Leave { .. })
+        })
     }
 }
 

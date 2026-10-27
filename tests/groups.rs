@@ -330,16 +330,10 @@ fn a_command_without_every_required_answer_changes_nothing() {
         id: [1; 32],
         members: names(0, 3),
     };
-    assert_eq!(
-        run(&mut owner, create).err().unwrap(),
-        Error::Unavailable
-    );
+    assert_eq!(run(&mut owner, create).err().unwrap(), Error::Unavailable);
     assert_eq!(owner.snapshot.revision(), 0);
     owner.fail_clock = true;
-    assert_eq!(
-        run(&mut owner, Command::Tick).err().unwrap(),
-        Error::Clock
-    );
+    assert_eq!(run(&mut owner, Command::Tick).err().unwrap(), Error::Clock);
 }
 
 #[test]
