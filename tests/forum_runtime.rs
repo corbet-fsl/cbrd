@@ -584,6 +584,7 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
             expected_revision: vec![],
             publication: replacement.publication.signed.clone(),
             record_proof: vec![],
+            accepting_waves: None,
         }),
         &alice,
         5,
@@ -599,6 +600,7 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
         Request::Heartbeat(HeartbeatInput {
             possession: proof(),
             expected_revision: vec![],
+            accepting_waves: None,
         }),
         &replacement,
         6,
@@ -624,6 +626,7 @@ async fn board_uses_real_forum_and_current_local_owner_checks() {
         Request::Heartbeat(HeartbeatInput {
             possession: proof(),
             expected_revision: vec![],
+            accepting_waves: None,
         }),
         &bob,
         8,
