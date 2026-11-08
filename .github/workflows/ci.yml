@@ -1,9 +1,5 @@
 name: ci
 on:
-  push:
-    branches: [main]
-    paths: ["Cargo.*", "src/**", "tests/**", "examples/**", "browser/**", ".ci/**", ".github/**"]
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
