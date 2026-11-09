@@ -2,6 +2,7 @@
 //! The transport carries bytes through the real Axum controller. All admission,
 //! currentness, signing, matching and storage below are the actual owner objects.
 //! This is an in-process HTTP seam; separate TLS/browser execution is required.
+#[path = "forum/mod.rs"]
 mod forum;
 use cbrd::{Board, Input, Verification, ViewLimits, clnk};
 use cfrm::*;
