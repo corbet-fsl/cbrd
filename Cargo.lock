@@ -147,14 +147,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03918c3dbd7701a85c6b9887732e2921175f26c350b4563841d0958c21d57e6d"
 
 [[package]]
+name = "ark-bls12-381"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c775f0d12169cba7aae4caeb547bb6a50781c7449a8aa53793827c9ec4abf488"
+dependencies = [
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+]
+
+[[package]]
 name = "ark-bn254"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bc66f96ebe2a17a499475b4f94791d379817592ef494171586967ffdc6f95db"
 dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-std",
+ "ark-ec 0.6.0",
+ "ark-ff 0.6.0",
+ "ark-std 0.6.0",
+]
+
+[[package]]
+name = "ark-ec"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "defd9a439d56ac24968cca0571f598a61bc8c55f71d50a89cda591cb750670ba"
+dependencies = [
+ "ark-ff 0.4.2",
+ "ark-poly 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "derivative",
+ "hashbrown 0.13.2",
+ "itertools 0.10.5",
+ "num-traits",
+ "zeroize",
 ]
 
 [[package]]
@@ -164,10 +193,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8352a2b2aedf6ba2cc38f7520fc51191d518dde96175c729af19f2d059f191c4"
 dependencies = [
  "ahash",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "ark-std",
+ "ark-ff 0.6.0",
+ "ark-poly 0.6.0",
+ "ark-serialize 0.6.0",
+ "ark-std 0.6.0",
  "educe",
  "fnv",
  "hashbrown 0.17.1",
@@ -180,19 +209,49 @@ dependencies = [
 
 [[package]]
 name = "ark-ff"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec847af850f44ad29048935519032c33da8aa03340876d351dfab5660d2966ba"
+dependencies = [
+ "ark-ff-asm 0.4.2",
+ "ark-ff-macros 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "derivative",
+ "digest 0.10.7",
+ "itertools 0.10.5",
+ "num-bigint",
+ "num-traits",
+ "paste",
+ "rustc_version",
+ "zeroize",
+]
+
+[[package]]
+name = "ark-ff"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7a806ac6c8307b929df4645776290a50ee2aac754ad09d8bdf73391309e43af"
 dependencies = [
- "ark-ff-asm",
- "ark-ff-macros",
- "ark-serialize",
- "ark-std",
+ "ark-ff-asm 0.6.0",
+ "ark-ff-macros 0.6.0",
+ "ark-serialize 0.6.0",
+ "ark-std 0.6.0",
  "digest 0.10.7",
  "educe",
  "num-bigint",
  "num-traits",
  "zeroize",
+]
+
+[[package]]
+name = "ark-ff-asm"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ed4aa4fe255d0bc6d79373f7e31d2ea147bcf486cba1be5ba7ea85abdb92348"
+dependencies = [
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -203,6 +262,19 @@ checksum = "1479009684adc073dff49a1025d3a7065b317a9ead25aaaca38cdc70058ba8a2"
 dependencies = [
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "ark-ff-macros"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7abe79b0e4288889c4574159ab790824d0033b9fdcb2a112a3182fac2e514565"
+dependencies = [
+ "num-bigint",
+ "num-traits",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -220,17 +292,42 @@ dependencies = [
 
 [[package]]
 name = "ark-poly"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d320bfc44ee185d899ccbadfa8bc31aab923ce1558716e1997a1e74057fe86bf"
+dependencies = [
+ "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "derivative",
+ "hashbrown 0.13.2",
+]
+
+[[package]]
+name = "ark-poly"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75f55af10b672002b8d953e230282c51206842e20e5791a94432219b4201de5c"
 dependencies = [
  "ahash",
- "ark-ff",
- "ark-serialize",
- "ark-std",
+ "ark-ff 0.6.0",
+ "ark-serialize 0.6.0",
+ "ark-std 0.6.0",
  "educe",
  "fnv",
  "hashbrown 0.17.1",
+]
+
+[[package]]
+name = "ark-serialize"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adb7b85a02b83d2f22f89bd5cac66c9c89474240cb6207cb1efc16d098e822a5"
+dependencies = [
+ "ark-serialize-derive 0.4.2",
+ "ark-std 0.4.0",
+ "digest 0.10.7",
+ "num-bigint",
 ]
 
 [[package]]
@@ -239,10 +336,21 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a74dd304fd536fb95d0a328e72be759209cc496a9da094c5bc56e5fea4f9e86b"
 dependencies = [
- "ark-serialize-derive",
- "ark-std",
+ "ark-serialize-derive 0.6.0",
+ "ark-std 0.6.0",
  "digest 0.10.7",
  "num-bigint",
+]
+
+[[package]]
+name = "ark-serialize-derive"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae3281bc6d0fd7e549af32b52511e1302185bd688fd3359fa36423346ff682ea"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -254,6 +362,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "ark-std"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94893f1e0c6eeab764ade8dc4c0db24caf4fe7cbbaafc0eba0a9030f447b5185"
+dependencies = [
+ "num-traits",
+ "rand 0.8.8",
 ]
 
 [[package]]
@@ -319,29 +437,6 @@ name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
-
-[[package]]
-name = "aws-lc-rs"
-version = "1.18.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "faac5829c2b74c28f830747e7818ccfb684261b5f48a1118b1e2a13d36dfab13"
-dependencies = [
- "aws-lc-sys",
- "zeroize",
-]
-
-[[package]]
-name = "aws-lc-sys"
-version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1622d8446a2d4b2ce0c7eefc73dd43a99779028d5ee5c2dd8073a658ba8a2bc"
-dependencies = [
- "cc",
- "cmake",
- "dunce",
- "fs_extra",
- "pkg-config",
-]
 
 [[package]]
 name = "axum"
@@ -439,6 +534,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "bbs_plus"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d9282cfe703afcb3644e13573018cb91df7c9cb7ddd420d614dae462e68c6cf"
+dependencies = [
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "digest 0.10.7",
+ "dock_crypto_utils",
+ "itertools 0.14.0",
+ "oblivious_transfer_protocols",
+ "schnorr_pok",
+ "secret_sharing_and_dkg",
+ "serde",
+ "serde_with",
+ "zeroize",
+]
+
+[[package]]
 name = "bhttp"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -529,6 +645,15 @@ name = "bitflags"
 version = "2.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
+
+[[package]]
+name = "blake2"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46502ad458c9a52b69d4d4d32775c788b7a1b85e8bc9d482d92250fc0e3f8efe"
+dependencies = [
+ "digest 0.10.7",
+]
 
 [[package]]
 name = "blake3"
@@ -642,6 +767,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "bulletproofs_plus_plus"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eab0582f029697e0b5b39b2b72d93b6b753b7b01cbd0146a172edc9bf7755008"
+dependencies = [
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-poly 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "digest 0.10.7",
+ "dock_crypto_utils",
+ "serde",
+ "serde_with",
+ "zeroize",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -686,6 +829,7 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 [[package]]
 name = "cbcn"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/cbcn.git?branch=main#48b22f534113af4b345c7c19c70116440c3c8a66"
 dependencies = [
  "csgn",
  "serde",
@@ -695,6 +839,7 @@ dependencies = [
 [[package]]
 name = "cblc"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-fsl/cblc.git?branch=main#cfd6f22036451615119f420be97fa3e16695b05d"
 dependencies = [
  "cbcn",
  "cmbl",
@@ -723,6 +868,7 @@ dependencies = [
 [[package]]
 name = "cblv"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/cblv.git?branch=main#2c920810049d595c6bfbba337152115ea0362220"
 dependencies = [
  "bhttp",
  "getrandom 0.3.4",
@@ -744,6 +890,7 @@ dependencies = [
  "cgrd",
  "cgrp",
  "cgth",
+ "chacha20poly1305 0.11.0",
  "ckmg",
  "clnk",
  "cnvl",
@@ -777,25 +924,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f360145194ee8e21db5ee7f3fcd4fe52210864c75c985dae33218202c8bbe040"
 dependencies = [
  "find-msvc-tools",
- "jobserver",
- "libc",
  "shlex 2.0.1",
 ]
 
 [[package]]
 name = "cchr"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/cchr.git?branch=main#77e4369980ea7f99a538b72dd1eaea0428552e7f"
 dependencies = [
+ "blake3",
  "cbcn",
  "cblv",
  "cgrd",
+ "ckmg",
  "ckyh",
+ "cpsd",
  "crbk",
  "csgn",
  "cshm",
  "schemars",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "url",
  "webauthn-rs-proto",
 ]
@@ -803,6 +953,7 @@ dependencies = [
 [[package]]
 name = "cdht"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cdht.git?branch=main#a07663e051baeef7afc4d5f5c177332bbf647121"
 dependencies = [
  "blake3",
  "capnp",
@@ -828,6 +979,7 @@ dependencies = [
 [[package]]
 name = "cfbk"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cfbk.git?branch=main#5f7dec374f967412b8ffa3ddae1e5a1762b8b5a4"
 
 [[package]]
 name = "cfg-if"
@@ -844,6 +996,7 @@ checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 [[package]]
 name = "cfrm"
 version = "0.2.0"
+source = "git+https://git.corbet.ch/corbet-fsl/cfrm.git?branch=main#79ea0b112fbde553ea0bc352843801796547db4e"
 dependencies = [
  "axum",
  "cblv",
@@ -870,6 +1023,7 @@ dependencies = [
 [[package]]
 name = "cgrd"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cgrd.git?branch=main#96574900ffdd6287c00fb74c47fd872c412497ca"
 dependencies = [
  "bigdecimal",
  "cpns",
@@ -890,6 +1044,7 @@ dependencies = [
 [[package]]
 name = "cgrp"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/cgrp.git?branch=main#956b002fd012ecdf0b83e837d9cd7967b2141586"
 dependencies = [
  "ckmg",
  "cmbl",
@@ -907,6 +1062,7 @@ dependencies = [
 [[package]]
 name = "cgth"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-fsl/cgth.git?branch=main#972b14fd2d12ff1327e911777e825f2069dfa801"
 dependencies = [
  "cbcn",
  "cblc",
@@ -1039,6 +1195,7 @@ dependencies = [
 [[package]]
 name = "ckmg"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/ckmg.git?branch=main#b521ef1e6e085530d8818037a95bb8e6aaccb495"
 dependencies = [
  "blake3",
  "cdht",
@@ -1063,6 +1220,7 @@ dependencies = [
 [[package]]
 name = "ckyh"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/ckyh.git?branch=main#68219a44526294d8c45abddb945401f8393370c5"
 dependencies = [
  "ciborium",
  "csgn",
@@ -1089,6 +1247,7 @@ dependencies = [
 [[package]]
 name = "clkp"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/clkp.git?branch=main#51631bc4f61bb17b34601557064c6ab6f6a5cafb"
 dependencies = [
  "cgrd",
  "cmmr",
@@ -1103,6 +1262,7 @@ dependencies = [
 [[package]]
 name = "clnk"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/clnk.git?branch=main#1f2888479d4ee5e72d8b7c9c47867fd06d057d0b"
 dependencies = [
  "cfrm",
  "cmbl",
@@ -1126,6 +1286,7 @@ dependencies = [
 [[package]]
 name = "cmbl"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/cmbl.git?branch=main#36f1d304d24d7fd9dcc9b5ef45112c837f12ab70"
 dependencies = [
  "blake3",
  "blind-rsa-signatures",
@@ -1145,6 +1306,7 @@ dependencies = [
 [[package]]
 name = "cmmr"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/cmmr.git?branch=main#8aa0f7d01e6775914446dbb7e146deb638d65ac3"
 dependencies = [
  "serde",
 ]
@@ -1158,6 +1320,7 @@ checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
 [[package]]
 name = "cnvl"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cnvl.git?branch=main#e89714bb70dccb88baa6970e81ace50be2b5deb7"
 dependencies = [
  "cgrd",
  "chacha20poly1305 0.11.0",
@@ -1173,6 +1336,7 @@ dependencies = [
 [[package]]
 name = "cnvy"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/cnvy.git?branch=main#8caae77adcbae011d61e0befae73727110e28d38"
 dependencies = [
  "cchr",
  "schemars",
@@ -1280,6 +1444,7 @@ dependencies = [
 [[package]]
 name = "cpfl"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cpfl.git?branch=main#587dbed5d3f6617d734e1fc6abad55f29ab7edae"
 dependencies = [
  "blake3",
  "cgrd",
@@ -1300,6 +1465,7 @@ dependencies = [
 [[package]]
 name = "cpns"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cpns.git?branch=main#df17e69c80f1e193e498627385bf75de6fd7d8c4"
 dependencies = [
  "getrandom 0.4.3",
  "sha2 0.11.0",
@@ -1310,6 +1476,7 @@ dependencies = [
 [[package]]
 name = "cprz"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cprz.git?branch=main#c7300c8f794205faa54d2e09da784652313616b7"
 dependencies = [
  "cprz-blob",
 ]
@@ -1317,6 +1484,7 @@ dependencies = [
 [[package]]
 name = "cprz-blob"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cprz.git?branch=main#c7300c8f794205faa54d2e09da784652313616b7"
 dependencies = [
  "brotli",
 ]
@@ -1324,6 +1492,31 @@ dependencies = [
 [[package]]
 name = "cprz-pad"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cprz.git?branch=main#c7300c8f794205faa54d2e09da784652313616b7"
+
+[[package]]
+name = "cpsd"
+version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cpsd.git?branch=main#13c56615b692df2eef0f91084b5ab954affde50f"
+dependencies = [
+ "ark-bls12-381",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "bbs_plus",
+ "blake2",
+ "bulletproofs_plus_plus",
+ "chacha20poly1305 0.11.0",
+ "csgn",
+ "dock_crypto_utils",
+ "getrandom 0.2.17",
+ "js-sys",
+ "rand_chacha 0.3.1",
+ "schnorr_pok",
+ "wasm-bindgen",
+ "zeroize",
+]
 
 [[package]]
 name = "cpubits"
@@ -1363,6 +1556,7 @@ dependencies = [
 [[package]]
 name = "crbk"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/crbk.git?branch=main#da30aeddf5fa4757365af1feea746385c2845636"
 dependencies = [
  "czkp",
  "semver",
@@ -1374,11 +1568,13 @@ dependencies = [
 [[package]]
 name = "crlt"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/crlt.git?branch=main#30b9b9f36aa1c74f84d7648ef7df8dcaa4b8c5b1"
 dependencies = [
  "deadpool",
  "libsql",
  "libsql-hrana",
  "reqwest 0.13.5",
+ "rustls",
  "serde_json",
  "sqlparser",
  "thiserror 2.0.21",
@@ -1481,6 +1677,7 @@ dependencies = [
 [[package]]
 name = "csgn"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/csgn.git?branch=main#ab5ea2ee6672f90c0ef053932c46cb8b237ba626"
 dependencies = [
  "ciborium-ll",
  "coset 0.4.2",
@@ -1493,6 +1690,7 @@ dependencies = [
 [[package]]
 name = "cshm"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cshm.git?branch=main#65f75befc8e4136eb10d01eddfae1e0ca07fbc0f"
 dependencies = [
  "bigdecimal",
  "jsonschema",
@@ -1504,6 +1702,7 @@ dependencies = [
 [[package]]
 name = "csrh"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/csrh.git?branch=main#1fee093bdb01e2e54f59131d94467d55d9a12e47"
 dependencies = [
  "cgrd",
  "cpfl",
@@ -1515,6 +1714,7 @@ dependencies = [
 [[package]]
 name = "csrn"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-fsl/csrn.git?branch=main#39201f11e60d454ab1d2164d2b075507e5041d0e"
 dependencies = [
  "cchr",
  "cnvy",
@@ -1523,6 +1723,7 @@ dependencies = [
 [[package]]
 name = "cssr"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cssr.git?branch=main#50ccd40086f684bbc0fe423c3e02e959744de9b2"
 dependencies = [
  "crlt",
  "czkp",
@@ -1535,6 +1736,7 @@ dependencies = [
 [[package]]
 name = "cswb"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/cswb.git?branch=main#0e9d9b241cc7d803dfef575419b13e61b608f7b2"
 dependencies = [
  "cchr",
  "cmmr",
@@ -1558,6 +1760,7 @@ checksum = "8fd9f3db6f2cfef61c10613071955154ffdc9e515daebff26de4b54e35038fdd"
 [[package]]
 name = "ctcs"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/ctcs.git?branch=main#3addf8e680609717388ad59d979a2775542422b2"
 dependencies = [
  "ckmg",
  "cwst",
@@ -1569,6 +1772,7 @@ dependencies = [
 [[package]]
 name = "cthl"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-libre/cthl.git?branch=main#2c4747387169900b09197bea38199c1e4807383d"
 dependencies = [
  "governor",
 ]
@@ -1576,6 +1780,7 @@ dependencies = [
 [[package]]
 name = "cthr"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/cthr.git?branch=main#14e33ee0c1a8ce0bdb4797254b5d1d9edd3db9db"
 dependencies = [
  "cchr",
  "cgrp",
@@ -1601,6 +1806,7 @@ dependencies = [
 [[package]]
 name = "ctnd"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-libre/ctnd.git?branch=main#3f2ed088e5638497e7fa706fea7a292fad88ed2a"
 dependencies = [
  "cgrp",
  "schemars",
@@ -1683,6 +1889,7 @@ dependencies = [
 [[package]]
 name = "cvch"
 version = "0.2.1"
+source = "git+https://git.corbet.ch/corbet-foss/cvch.git?branch=main#b476df20ee7ed5d58bbeb44a8723915d637b18df"
 dependencies = [
  "cfbk",
  "csgn",
@@ -1701,6 +1908,7 @@ dependencies = [
 [[package]]
 name = "cvfy"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-foss/cvfy.git?branch=main#ce3a77797dc64127a1034374cdaf23f630f5eb60"
 dependencies = [
  "czkp",
  "data-encoding",
@@ -1712,6 +1920,7 @@ dependencies = [
 [[package]]
 name = "cvlk"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-foss/cvlk.git?branch=main#79e8ec403a7f0dc000ff1b1c840f2868e7d1b6f3"
 dependencies = [
  "cmmr",
  "cthl",
@@ -1725,6 +1934,7 @@ dependencies = [
 [[package]]
 name = "cvtl"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-fsl/cvtl.git?branch=main#88895f93a22e1033edc2634bf83c591dafa60aa7"
 dependencies = [
  "cmmr",
  "cvlk",
@@ -1733,6 +1943,7 @@ dependencies = [
 [[package]]
 name = "cwst"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-foss/cwst.git?branch=main#81e7ee451e37e8256041cf3aa7d1cb717eb9d5c6"
 dependencies = [
  "atomicwrites",
  "blake3",
@@ -1755,6 +1966,7 @@ dependencies = [
 [[package]]
 name = "cxch"
 version = "0.1.0"
+source = "git+https://git.corbet.ch/corbet-foss/cxch.git?branch=main#f37b50f5af66108c4a29de67bc5ab13d26994b54"
 dependencies = [
  "cgrd",
  "cnvl",
@@ -1768,9 +1980,10 @@ dependencies = [
 [[package]]
 name = "czkp"
 version = "0.0.0"
+source = "git+https://git.corbet.ch/corbet-foss/czkp.git?branch=main#c89b7b5d035aa9db1186bdce6d7f5200e3c01982"
 dependencies = [
  "ark-bn254",
- "ark-ff",
+ "ark-ff 0.6.0",
  "data-encoding",
  "ed25519-dalek 3.0.0",
  "p256 0.13.2",
@@ -1779,6 +1992,41 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
+]
+
+[[package]]
+name = "darling"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a01d95850c592940db9b8194bc39f4bc0e89dee5c4265e4b1807c34a9aba453c"
+dependencies = [
+ "darling_core",
+ "darling_macro",
+]
+
+[[package]]
+name = "darling_core"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "859d65a907b6852c9361e3185c862aae7fafd2887876799fa55f5f99dc40d610"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c972679f83bdf9c42bd905396b6c3588a843a17f0f16dfcfa3e2c5d57441835"
+dependencies = [
+ "darling_core",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1826,6 +2074,17 @@ dependencies = [
  "const-oid 0.10.2",
  "pem-rfc7468 1.0.0",
  "zeroize",
+]
+
+[[package]]
+name = "derivative"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1905,10 +2164,42 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "780955b8b195a21ab8e4ac6b60dd1dbdcec1dc6c51c0617964b08c81785e12c9"
 
 [[package]]
-name = "dunce"
-version = "1.0.5"
+name = "dock_crypto_utils"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
+checksum = "4d4d284b7d0449d718e1740be2b1919f0f7da188c30f620ba74e7d33c070ad4d"
+dependencies = [
+ "aead 0.5.2",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-poly 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "digest 0.10.7",
+ "dock_merlin",
+ "hkdf 0.12.4",
+ "itertools 0.14.0",
+ "num",
+ "serde",
+ "serde_with",
+ "sha2 0.10.9",
+ "zeroize",
+]
+
+[[package]]
+name = "dock_merlin"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f19d398293c9cb71dda798a521c7ffc5182d6222e0d66f731041755efaaa7ced"
+dependencies = [
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "byteorder",
+ "keccak 0.1.6",
+ "rand_core 0.6.4",
+ "serde",
+ "zeroize",
+]
 
 [[package]]
 name = "dyn-clone"
@@ -2266,12 +2557,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fs_extra"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
-
-[[package]]
 name = "futures"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2517,6 +2802,15 @@ dependencies = [
  "cfg-if",
  "crunchy",
  "zerocopy 0.8.59",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
+dependencies = [
+ "ahash",
 ]
 
 [[package]]
@@ -2980,6 +3274,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ident_case"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
+
+[[package]]
 name = "idna"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3110,16 +3410,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jobserver"
-version = "0.1.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c00acbd29eabad4a2392fa0e921c874934dbbf4194312ad20f04a0ed67a3cb3"
-dependencies = [
- "getrandom 0.4.3",
- "libc",
-]
-
-[[package]]
 name = "js-sys"
 version = "0.3.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3223,6 +3513,15 @@ checksum = "f6e3919bbaa2945715f0bb6d3934a173d1e9a59ac23767fbaaef277265a7411b"
 dependencies = [
  "cfg-if",
  "elliptic-curve 0.13.8",
+]
+
+[[package]]
+name = "keccak"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb26cec98cce3a3d96cbb7bced3c4b16e3d13f27ec56dbd62cbc8f39cfb9d653"
+dependencies = [
+ "cpufeatures 0.2.17",
 ]
 
 [[package]]
@@ -3846,6 +4145,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "oblivious_transfer_protocols"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04833c888c1a777e4cd11ae8de29c4b170f1f91e1a296f9ddc7ff89f9162fe97"
+dependencies = [
+ "aes 0.8.4",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "byteorder",
+ "cc",
+ "cipher 0.4.4",
+ "digest 0.10.7",
+ "dock_crypto_utils",
+ "itertools 0.14.0",
+ "schnorr_pok",
+ "serde",
+ "serde_with",
+ "zeroize",
+]
+
+[[package]]
 name = "ohttp"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4124,6 +4446,12 @@ dependencies = [
  "typeshare",
  "zeroize",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pastey"
@@ -4456,7 +4784,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e939fd64360c03ef6507a6e6a0ef497dcb97648575c459b071447ee041b59b2d"
 dependencies = [
  "ark-bn254",
- "ark-ff",
+ "ark-ff 0.6.0",
  "thiserror 2.0.21",
 ]
 
@@ -4486,7 +4814,6 @@ version = "0.11.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e750cca55fe4f0439a15d0bb529da9651e79993e8e72c61a899a36d462befbe"
 dependencies = [
- "aws-lc-rs",
  "bytes",
  "getrandom 0.4.3",
  "lru-slab",
@@ -4850,7 +5177,6 @@ dependencies = [
  "log",
  "percent-encoding",
  "pin-project-lite",
- "quinn",
  "rustls",
  "rustls-pki-types",
  "rustls-platform-verifier",
@@ -4987,7 +5313,6 @@ version = "0.23.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
 dependencies = [
- "aws-lc-rs",
  "once_cell",
  "ring",
  "rustls-pki-types",
@@ -5051,7 +5376,6 @@ version = "0.103.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3c3cf1d8b1e7d4927e2d154c3fcb02979afb9939629c62cd9048d4f07b60ac2"
 dependencies = [
- "aws-lc-rs",
  "ring",
  "rustls-pki-types",
  "untrusted",
@@ -5129,6 +5453,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "schnorr_pok"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c0599b0c4afcb0741d1d9a820da565b7b8b78193daa912dc86202756e0ba704"
+dependencies = [
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "digest 0.10.7",
+ "dock_crypto_utils",
+ "serde",
+ "serde_with",
+ "zeroize",
+]
+
+[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5159,6 +5500,25 @@ dependencies = [
  "der 0.8.2",
  "hybrid-array",
  "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "secret_sharing_and_dkg"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21c4f3c5cba60ca061a2ddb74612541af529671c8a2560f5400d1e5a09628397"
+dependencies = [
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-poly 0.4.2",
+ "ark-serialize 0.4.2",
+ "ark-std 0.4.0",
+ "digest 0.10.7",
+ "dock_crypto_utils",
+ "schnorr_pok",
+ "serde",
+ "serde_with",
  "zeroize",
 ]
 
@@ -5298,6 +5658,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_with"
+version = "1.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "678b5a069e50bf00ecd22d0cd8ddf7c236f68581b03db652061ed5eb13a312ff"
+dependencies = [
+ "serde",
+ "serde_with_macros",
+]
+
+[[package]]
+name = "serde_with_macros"
+version = "1.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e182d6ec6f05393cc0e5ed1bf81ad6db3a8feedf8ee515ecdd369809bcce8082"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "serdect"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5342,7 +5724,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be176f1a57ce4e3d31c1a166222d9768de5954f811601fb7ca06fc8203905ce1"
 dependencies = [
  "digest 0.11.3",
- "keccak",
+ "keccak 0.2.2",
 ]
 
 [[package]]
@@ -5352,7 +5734,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc9bad02c26382724b2d2692c6f179285e4b54eeecd7968f52a50059c3c11759"
 dependencies = [
  "digest 0.11.3",
- "keccak",
+ "keccak 0.2.2",
  "sponge-cursor",
 ]
 
@@ -5363,7 +5745,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09057cb2149ad4cbd2da1e26b351f9a4c354219421229c69c3063e6f61947c4a"
 dependencies = [
  "digest 0.11.3",
- "keccak",
+ "keccak 0.2.2",
  "sponge-cursor",
 ]
 
@@ -5526,6 +5908,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "strsim"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
 name = "strum"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5573,6 +5961,17 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "syn"
+version = "1.0.109"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "unicode-ident",
+]
 
 [[package]]
 name = "syn"
@@ -5938,7 +6337,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f892c6904b0bd5a9241eac848347abcbbbd2b9f3892bad23ac3e6efab8d6f06a"
 dependencies = [
  "digest 0.11.3",
- "keccak",
+ "keccak 0.2.2",
  "sponge-cursor",
 ]
 
@@ -6712,207 +7111,3 @@ name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
-
-[[patch.unused]]
-name = "cfry"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "cwlt"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cwlt-engine"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cphn"
-version = "0.1.1"
-
-[[patch.unused]]
-name = "cgts"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "crgs"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cmbr"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cblc-private-accounting-fixture"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "ctrn"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "cdlv"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "cmbx"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cmsh"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "clbs"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cvlt"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cgbl"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cvld"
-version = "0.2.0"
-
-[[patch.unused]]
-name = "cnbx"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "cplc"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "crpt"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cprz-audio"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cprz-delta"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cprz-image"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cprz-structured"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cprz-text"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cprz-video"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cvln"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cpsd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cpsd-fuzz"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cmty"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cpmt"
-version = "0.2.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cmsg"
-version = "0.2.0"
-
-[[patch.unused]]
-name = "cmsg-foyer-fixture"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cnrl"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cmeet"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "cmeet-e2e"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cfyr"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cfyr-browser-tests"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cpky"
-version = "0.0.0"
-
-[[patch.unused]]
-name = "cwvs"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "browser-coverage-runtime-cbrd"
-version = "0.0.0"
