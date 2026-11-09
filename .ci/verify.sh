@@ -179,7 +179,7 @@ CBRD_LAST_GATE="wasm-coverage"
 : "${CBRD_WASM_CLANG_BIN:?Missing unwrapped wasm clang from run-cached.sh}"
 (
 export PATH="$CBRD_WASM_CLANG_BIN:$PATH"
-"$NIGHTLY_CARGO" llvm-cov test --locked --branch --coverage-target-only --target wasm32-unknown-unknown --test board --json --output-path wasm-coverage.json --ignore-filename-regex '/tests/'
+"$NIGHTLY_CARGO" llvm-cov test --locked --branch --coverage-target-only --target wasm32-unknown-unknown --test it --json --output-path wasm-coverage.json --ignore-filename-regex '/tests/'
 )
 CBRD_LAST_GATE="wasm-coverage-report"
 "$NIGHTLY_CARGO" llvm-cov report --target wasm32-unknown-unknown --lcov --output-path wasm-coverage.lcov --ignore-filename-regex '/tests/'

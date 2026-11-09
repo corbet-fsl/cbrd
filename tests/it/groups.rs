@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 //! Group write side through the Board: real Groups decisions, real ed25519
 //! consents, fake device directory, contacts and checkpoint store.
 use cbrd::cgrp::{

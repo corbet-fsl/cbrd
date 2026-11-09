@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 //! The display line shows a sponsor only after signature and lineage agree.
 use cbrd::{FORMER_MEMBER, Sponsor, vouched_by_line};
 use cgrd::VerifiedSponsor;

@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 //! Room ordering and presence need a current anonymous pass; without one nothing
 //! is sent and nothing is invented.
 use cbrd::{Board, RoomOrdering, clnk};
