@@ -128,7 +128,7 @@ binding_version=$(sed -n 's/^version=//p' "$GITHUB_OUTPUT" | tail -n 1)
 test -n "$binding_version" || { echo 'could not resolve wasm-bindgen version from Cargo.lock' >&2; exit 2; }
 echo "$binding_version" > binding-version.txt
 archive="wasm-bindgen-${binding_version}-x86_64-unknown-linux-musl.tar.gz"
-base="https://github.com/wasm-bindgen/wasm-bindgen/releases/download/${binding_version}"
+base="${WASM_BINDGEN_DOWNLOAD_BASE:-https://github.com/wasm-bindgen/wasm-bindgen/releases/download}/${binding_version}"
 mkdir -p "$RUNNER_TEMP/wasm-runner"
 cd "$RUNNER_TEMP/wasm-runner"
 CBRD_LAST_GATE="wasm-runner-fetch"
