@@ -46,12 +46,11 @@ export CBRD_WASM_CLANG="$CBRD_WASM_CLANG_BIN/clang"
 # Same nixpkgs revision as tool_source (tarball form of the pinned flake).
 selenium_python=$(nix build --no-link --print-out-paths --impure --expr "let pkgs = import (builtins.fetchTarball { url = \"https://github.com/NixOS/nixpkgs/archive/b7c2ada94fe99c15b0dbcf4d11fd7850b957a436.tar.gz\"; sha256 = \"sha256-IItrdb7Puk05RqOBWZYFC5X6Wl1sJmCfh5MWVHw5iMM=\"; }) {}; in (pkgs.python3.withPackages (ps: [ ps.selenium ps.pip ]))")
 PATH="$selenium_python/bin:$PATH"
-export PROTO_HOME="$toolchains/proto" RUSTUP_HOME="$toolchains/rustup"
-shared_cargo_home=${CARGO_HOME:-}
-export CARGO_HOME="$toolchains/cargo" MOON_HOME="$state/moon-home"
+export PROTO_HOME="$toolchains/proto"
+export MOON_HOME="$state/moon-home"
 export PROTO_AUTO_CLEAN=false PROTO_TELEMETRY=false PROTO_YES=true
 export RUSTUP_INIT_SKIP_PATH_CHECK=yes RUSTUP_TOOLCHAIN=stable
-export PATH="$(dirname "$CCID_BIN"):$CARGO_HOME/bin:$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
+export PATH="$(dirname "$CCID_BIN"):$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
 export CI_JOBS="${CI_JOBS:-2}" CARGO_BUILD_JOBS="${CI_JOBS:-2}"
 export RUST_TEST_THREADS="${CI_TEST_THREADS:-2}"
 export CARGO_NET_GIT_FETCH_WITH_CLI=true
@@ -76,7 +75,7 @@ TOOLCHAIN_WASM_TARGETS="stable:wasm32-unknown-unknown nightly:wasm32-unknown-unk
 # shellcheck source=toolchain-lock.sh
 source "$(dirname "${BASH_SOURCE[0]}")/toolchain-lock.sh"
 toolchain_ensure
-cargo_bin=$("$CARGO_HOME/bin/rustup" which --toolchain stable cargo)
+cargo_bin=$(rustup which --toolchain stable cargo)
 test -x "$cargo_bin"
 export PATH="$(dirname "$cargo_bin"):$PATH"
 export CCID_SOURCE_REVISION="$CI_COMMIT_SHA"
