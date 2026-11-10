@@ -19,7 +19,7 @@ ohttp = ["clnk/ohttp"]
 [dependencies]
 clnk = { git = "https://git.corbet.ch/corbet-libre/clnk.git", branch = "main", default-features = false }
 csrh = { git = "https://git.corbet.ch/corbet-libre/csrh.git", branch = "main" }
-cxch = { git = "https://git.corbet.ch/corbet-foss/cxch.git", branch = "main" }
+cxch = { git = "https://git.corbet.ch/corbet-libre/cxch.git", branch = "main" }
 cgrp = { git = "https://git.corbet.ch/corbet-libre/cgrp.git", branch = "main" }
 ctnd = { git = "https://git.corbet.ch/corbet-libre/ctnd.git", branch = "main" }
 cthr = { git = "https://git.corbet.ch/corbet-libre/cthr.git", branch = "main" }
@@ -36,9 +36,9 @@ hpke = { version = "0.14", default-features = false, features = ["alloc", "x2551
 
 cpfl = { git = "https://git.corbet.ch/corbet-libre/cpfl.git", branch = "main" }
 ckmg = { git = "https://git.corbet.ch/corbet-libre/ckmg.git", branch = "main" }
-cwst = { git = "https://git.corbet.ch/corbet-foss/cwst.git", branch = "main" }
+cwst = { git = "https://git.corbet.ch/corbet-libre/cwst.git", branch = "main" }
 cchr = { git = "https://git.corbet.ch/corbet-libre/cchr.git", branch = "main" }
-cvch = { git = "https://git.corbet.ch/corbet-foss/cvch.git", branch = "main" }
+cvch = { git = "https://git.corbet.ch/corbet-libre/cvch.git", branch = "main" }
 
 [dev-dependencies]
 csgn = { git = "https://git.corbet.ch/corbet-libre/csgn.git", branch = "main", default-features = false, features = ["volatile-signer"] }
