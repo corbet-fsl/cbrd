@@ -1,7 +1,7 @@
 schema = 1
 project = "cbrd"
 
-# .ci/ccid.toml for corbet-libs/cbrd — runtime adapter.
+# .ci/ccid.toml for corbet-fsl/cbrd — runtime adapter.
 # Ports ALL Linux gates from .github/workflows/ci.yml (jobs resolve,
 # dependency-policy, check, coverage incl. native + wasm browser coverage)
 # into .ci/verify.sh in CI ordering, environment, and flags.
